@@ -1,0 +1,147 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "admin": {
+      "nytFamilies": {
+        "$fid": {
+          ".read": "auth != null && root.child('families/' + $fid + '/members/' + auth.uid).exists()",
+          ".write": false
+        }
+      }
+    },
+
+    "invites": {
+      "$fid": {
+        ".read": "auth != null && root.child('families/' + $fid + '/members/' + auth.uid).exists()",
+        ".write": "auth != null && (root.child('families/' + $fid + '/meta/ownerUid').val() === auth.uid || (!data.exists() && newData.parent().parent().child('families/' + $fid + '/meta/ownerUid').val() === auth.uid))",
+        ".validate": "newData.isString() && newData.val().length >= 16"
+      }
+    },
+
+    "families": {
+      "$fid": {
+        ".read": "auth != null && data.child('members/' + auth.uid).exists()",
+
+        "meta": {
+          ".write": "auth != null && ((!data.exists() && newData.child('ownerUid').val() === auth.uid) || (!newData.exists() && data.child('ownerUid').val() === auth.uid))",
+          ".validate": "newData.hasChildren(['name', 'ownerUid', 'timezone', 'createdAt']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 40 && newData.child('timezone').isString() && newData.child('createdAt').isNumber()"
+        },
+
+        "members": {
+          ".write": "auth != null && !newData.exists() && root.child('families/' + $fid + '/meta/ownerUid').val() === auth.uid",
+          "$uid": {
+            ".write": "auth != null && ((auth.uid === $uid && (data.exists() || newData.parent().parent().child('meta/ownerUid').val() === auth.uid || (newData.child('inviteCode').isString() && newData.child('inviteCode').val() === root.child('invites/' + $fid).val()))) || (!newData.exists() && root.child('families/' + $fid + '/meta/ownerUid').val() === auth.uid))",
+            ".validate": "newData.hasChildren(['name', 'color', 'joinedAt']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 20 && newData.child('color').isString() && newData.child('color').val().length <= 20 && newData.child('joinedAt').isNumber()"
+          }
+        },
+
+        "days": {
+          ".write": "auth != null && !newData.exists() && root.child('families/' + $fid + '/meta/ownerUid').val() === auth.uid",
+          "$day": {
+            ".validate": "$day.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
+
+            "source": {
+              ".write": "auth != null && root.child('families/' + $fid + '/members/' + auth.uid).exists() && !data.parent().child('found').exists()",
+              ".validate": "newData.val() === 'generated' || (newData.val() === 'nyt' && root.child('admin/nytFamilies/' + $fid).val() === true)"
+            },
+            "wordlistVersion": {
+              ".write": "auth != null && root.child('families/' + $fid + '/members/' + auth.uid).exists() && !data.parent().child('found').exists()",
+              ".validate": "newData.isNumber()"
+            },
+            "nyt": {
+              ".write": "auth != null && root.child('families/' + $fid + '/members/' + auth.uid).exists() && !data.parent().child('found').exists() && root.child('admin/nytFamilies/' + $fid).val() === true",
+              ".validate": "newData.hasChildren(['center', 'outer', 'pangrams', 'answers', 'loadedBy']) && newData.child('center').isString() && newData.child('outer').isString() && newData.child('pangrams').isString() && newData.child('answers').isString() && newData.child('answers').val().length <= 20000 && newData.child('loadedBy').val() === auth.uid"
+            },
+            "pendingNyt": {
+              ".write": "auth != null && root.child('families/' + $fid + '/members/' + auth.uid).exists() && root.child('admin/nytFamilies/' + $fid).val() === true",
+              ".validate": "newData.hasChildren(['by', 'at']) && newData.child('by').val() === auth.uid && newData.child('at').isNumber()"
+            },
+            "hints": {
+              "$uid": {
+                ".write": "auth != null && auth.uid === $uid && root.child('families/' + $fid + '/members/' + auth.uid).exists()",
+                ".validate": "newData.isBoolean()"
+              }
+            },
+            "found": {
+              "$word": {
+                ".write": "auth != null && root.child('families/' + $fid + '/members/' + auth.uid).exists() && !data.exists()",
+                ".validate": "$word.matches(/^[a-z]{4,20}$/) && newData.hasChildren(['by', 'at']) && newData.child('by').val() === auth.uid && newData.child('at').isNumber() && (data.parent().parent().child('source').exists() || newData.parent().parent().child('source').exists())"
+              }
+            },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "$other": { ".validate": false }
+      }
+    },
+
+    "games": {
+      "quilt": {
+        "$fid": {
+          ".read": "auth != null && root.child('families/' + $fid + '/members/' + auth.uid).exists()",
+          ".write": "auth != null && !newData.exists() && root.child('families/' + $fid + '/meta/ownerUid').val() === auth.uid",
+          "$day": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && $day.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && root.child('families/' + $fid + '/members/' + auth.uid).exists()",
+              "startedAt": { ".validate": "newData.isNumber()" },
+              "checks": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000" },
+              "solved": {
+                "$patch": { ".validate": "$patch.matches(/^p[0-8]$/) && newData.isNumber()" }
+              },
+              "$other": { ".validate": false }
+            }
+          }
+        }
+      },
+
+      "lantern": {
+        "$fid": {
+          ".read": "auth != null && root.child('families/' + $fid + '/members/' + auth.uid).exists()",
+          ".write": "auth != null && !newData.exists() && root.child('families/' + $fid + '/meta/ownerUid').val() === auth.uid",
+          "$day": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && $day.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && root.child('families/' + $fid + '/members/' + auth.uid).exists()",
+              "hints": { ".validate": "newData.isBoolean()" },
+              "found": {
+                "$path": {
+                  ".validate": "$path.matches(/^[0-9a-z]{4,16}$/) && newData.hasChildren(['w', 'at']) && newData.child('w').isString() && newData.child('w').val().matches(/^[a-z]{4,16}$/) && newData.child('w').val().length === $path.length && newData.child('at').isNumber()",
+                  "w": { ".validate": true },
+                  "at": { ".validate": true },
+                  "$other": { ".validate": false }
+                }
+              },
+              "$other": { ".validate": false }
+            }
+          }
+        }
+      },
+
+      "ladder": {
+        "$fid": {
+          ".read": "auth != null && root.child('families/' + $fid + '/members/' + auth.uid).exists()",
+          ".write": "auth != null && !newData.exists() && root.child('families/' + $fid + '/meta/ownerUid').val() === auth.uid",
+          "$day": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && $day.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && root.child('families/' + $fid + '/members/' + auth.uid).exists()",
+              "hints": { ".validate": "newData.isBoolean()" },
+              "words": {
+                "$word": { ".validate": "$word.matches(/^[a-z]{3,6}$/) && newData.isNumber()" }
+              },
+              "$other": { ".validate": false }
+            }
+          }
+        }
+      }
+    }
+  }
+}

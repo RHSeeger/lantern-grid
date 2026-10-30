@@ -1,0 +1,56 @@
+# Builds the game and publishes it to GitHub Pages, every time main is pushed. It can also be run by hand, from the
+# repository's Actions tab ("Run workflow").
+#
+# One-time setup: in the repository's Settings > Pages, set "Source" to "GitHub Actions".
+#
+# The lint and tests run first; if either fails, nothing is published (the site keeps the last good version).
+
+name: Deploy to GitHub Pages
+
+on:
+    push:
+        branches: [main]
+    workflow_dispatch:
+
+# What the workflow is allowed to do: read the code, and publish to Pages
+permissions:
+    contents: read
+    pages: write
+    id-token: write
+
+# Only one deploy at a time. A newer push waits for the one running to finish, rather than cancelling it part way
+concurrency:
+    group: pages
+    cancel-in-progress: false
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: actions/setup-node@v5
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - run: npm ci
+            - run: npm run lint
+            - run: npm run test
+            - run: npm run build
+
+            - uses: actions/configure-pages@v5
+
+            - uses: actions/upload-pages-artifact@v4
+              with:
+                  path: dist
+
+    deploy:
+        needs: build
+        runs-on: ubuntu-latest
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
+            - id: deployment
+              uses: actions/deploy-pages@v4

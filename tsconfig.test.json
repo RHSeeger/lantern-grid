@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js", "tests/**/*.ts", "tools/**/*.ts"],
+  "compilerOptions": {
+    "rootDir": ".",
+    // Tests and tools also read files from disk, so they need Node's types
+    "types": ["jest", "node"],
+    // No outDir override: this config is for editor/test type-checking only
+  }
+}

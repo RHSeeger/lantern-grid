@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Lantern Grid</title>
+  <meta name="description" content="A daily word-path puzzle: trace words through a grid of letters, and light up every square.">
+  <meta name="theme-color" content="#1d2340">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Lantern Grid">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <!-- Hidden until the stylesheet (loaded by the script) arrives; styles.css shows it again -->
+  <style>#app { opacity: 0; }</style>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>Lantern Grid</h1>
+        <span id="date" class="date"></span>
+      </div>
+      <nav id="tools" class="tools" aria-label="Game menu"></nav>
+    </header>
+
+    <main class="game">
+      <section class="status" aria-label="Progress">
+        <div class="mode-row">
+          <button id="mode-chip" class="mode-chip" type="button" aria-label="Who you are playing with"></button>
+          <button id="combine-chip" class="combine-chip" type="button" hidden></button>
+        </div>
+        <button id="progress" class="progress" type="button"></button>
+        <div class="wordbox-slot"><div id="wordbox" class="wordbox"></div></div>
+      </section>
+
+      <section class="play" aria-label="Puzzle">
+        <div id="loading" class="loading">Loading today's grid…</div>
+        <div id="connecting" class="connecting" role="status" hidden>
+          <p id="connecting-text"></p>
+          <button id="btn-play-local" class="pill" type="button">Play on my own instead</button>
+        </div>
+        <div id="message" class="message" aria-live="assertive" role="status"></div>
+        <div id="word" class="word empty" aria-live="polite"><span id="word-text"></span></div>
+        <div id="board" class="board"></div>
+        <div class="controls">
+          <button id="btn-clear" class="pill" type="button">Clear</button>
+          <button id="btn-enter" class="pill" type="button">Enter</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="modal-root"></div>
+  <div id="toasts" class="toasts"></div>
+  <noscript>This game needs JavaScript.</noscript>
+</body>
+</html>
