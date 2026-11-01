@@ -3,16 +3,18 @@
  */
 
 /**
- * What the board shows: the squares lit (and how brightly), the path being traced, who lit each square (once
- * combined), and the hint numbers.
+ * What the board shows: each square's dimmer level, the path being traced, who lit each square (once combined), and
+ * the hint numbers.
  */
 export type BoardView = {
-    /** For each square, how many found words go through it (0 = dark) */
-    glow: number[];
+    /** For each square, its dimmer level: 0 is dark, DIMMER_FULL is every List word through it found */
+    levels: number[];
     /** The squares being traced, in order */
     path: number[];
     /** For each square, the colors (PlayerColor ids) of everyone who lit it; null when not combined */
     owners: string[][] | null;
-    /** For each square, the number to show as a hint; null when the hints are off */
+    /** For each square, how many List words not yet found go through it; null when the hints are off */
     hints: number[] | null;
+    /** For each square, how many List words not yet found start on it; null when the hints are off */
+    starts: number[] | null;
 };

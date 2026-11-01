@@ -16,7 +16,16 @@ Known work that still needs doing. Remove items when they are done. `overview.md
 - **Time the answer search** on an older phone; if it's slow, it could run in a web worker.
 - **The word list** (SCOWL size 50) accepts some odd words, and may lack some everyday ones; adjust with
   `tools/blocklist.txt` or the size, and rebuild (before launch; see `overview.md`, Tuning).
-- **Difficulty**: check the hard squares are fun rather than frustrating, and that the ranks come at good points.
+- **Pacing**: the rank points in `data/ranks.ts` were set from a simulation with invented player skills. Check them
+  against about a week of real play, alone and together, and adjust. Full Output in particular may be too hard or too
+  easy; the List's size (`TUNING`) is the main control, since the chance of finding every word falls quickly as it grows.
+- **List quality**: SCOWL size 20 isn't a perfect measure of "everyday". Some odd words get on the List (`wive`), and some
+  ordinary ones miss it (`defer`). `tools/blocklist.txt` removes a word entirely; a way to move a word on or off the List
+  (a small list of overrides, read when building `everyday-words.txt`) would let the family fix these as they find them.
+  Rebuilding would change the grids, so it may be better to apply overrides without re-choosing them.
+- **Rank names**: the ranks are named from industrial lighting and its codes. Ask the user's wife to check or rename them
+  (`data/ranks.ts`).
+- **Hint numbers** on the smallest phones: check the two numbers fit beside the letter.
 
 ## Follow-ups
 

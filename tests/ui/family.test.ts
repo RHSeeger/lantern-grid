@@ -72,10 +72,10 @@ describe('Lantern Grid family play', () => {
         (document.getElementById('btn-compare') as HTMLElement).click();
         const rows = [...document.querySelectorAll('.score-table tbody tr')].map((r) => r.textContent);
         expect(rows).toHaveLength(2);
-        expect(rows[0]).toContain('Me (you)4/36');
-        expect(rows[1]).toContain('Mom4/36');
-        // Mom's longest word shows only as its length
-        expect(rows[1]).toContain('4 letters');
+        // Changed: Compare now shows each player's rank and the List words only they found (one each here), rather than
+        // squares lit and the longest word
+        expect(rows[0]).toContain('Me (you)Up to Code111');
+        expect(rows[1]).toContain('MomUp to Code111');
         closeModal();
     });
 
@@ -85,7 +85,7 @@ describe('Lantern Grid family play', () => {
         expect(document.querySelectorAll('.sq-owners .player-dot').length).toBe(8);
         (document.getElementById('btn-compare') as HTMLElement).click();
         const team = document.querySelector('.score-table tr.team')?.textContent;
-        expect(team).toContain('Together7/362');
+        expect(team).toContain('TogetherFull Output22');
         closeModal();
     });
 

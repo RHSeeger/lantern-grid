@@ -61,4 +61,22 @@ along each. Grids are kept with 120-320 answers and 2-5 hard squares (reached by
 20). The word list is SCOWL size 50 (with S, unlike Buzz Off's).
 **Why:** Lighting every square must always be possible, and a few hard squares make that the family's shared goal.
 **Affects:** game-design.md (The Puzzle), tools/build-puzzles.ts
+**Status:** Superseded by 2026-11-01 — Paced like Spelling Bee: a List of everyday words, dimmers and Spotlights
+
+## 2026-11-01 — Paced like Spelling Bee: a List of everyday words, dimmers and Spotlights
+**Decision:** Rank comes from the share of the points of a grid's List: its 45-65 everyday words (SCOWL size 20), on a
+new ladder named from industrial lighting and its codes. Other valid words are accepted as bonus words. Each square is
+on a dimmer showing the share of its List words found. Up to three long words are Spotlights. Hints now also show how
+many missing words start on each square. Compare shows rank, points, words, "Only" and Spotlights, in place of squares
+lit and the longest word. A found word lights every square it can go through, so tracing a found word again along another
+path is gone. The grids were rebuilt (seed v2), keeping those whose List is the right length, reaches every square and has
+a Spotlight; earlier saved play was deliberately invalidated, which the user and their wife were happy with. One ladder
+serves 1 to 4 players, rather than scaling with family size.
+**Why:** The game had only two real levels: lighting every square (easy), and finding all of ~230 words, many obscure (not
+realistic). The user wants Spelling Bee's pace: a good rank alone, a better one together, and every word rare but doable.
+The chance of finding every word falls quickly with the list's length, so the list had to shrink; dimmers keep the
+lighting theme (the user's wife works in lighting codes and regulations) and show where to hunt for the last words. Rank
+points come from a simulation with invented skills, so they need checking against real play.
+**Affects:** game-design.md, code-design.md, overview.md, how-the-game-works.md, ui/help.ts, gamelogic/play.ts, solver.ts,
+data/ranks.ts, tools/build-puzzles.ts, the data files
 **Status:** Active

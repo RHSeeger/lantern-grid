@@ -1,13 +1,13 @@
-import { MIN_WORD_LENGTH } from '../data/app';
+import { DIMMER_FULL, MIN_WORD_LENGTH } from '../data/app';
 import { RANKS } from '../data/ranks';
 import type { FoundPath } from '../types/FoundPath';
 import type { Puzzle } from '../types/Puzzle';
 import type { TraceResult } from '../types/TraceResult';
-import { parsePathKey, spell } from './grid';
+import { spell } from './grid';
 
 /**
- * The rules of play: checking a traced path, scoring words, which squares are lit, ranks, and summing up a player's
- * (or the family's) day.
+ * The rules of play: checking a traced path, scoring words, which squares are lit and how brightly, hints, ranks, and
+ * summing up a player's (or the family's) day.
  */
 
 /**
@@ -27,77 +27,153 @@ export function wordPoints(word: string): number {
 }
 
 /**
- * Works out which squares are lit: every square some found word went through.
+ * Returns the different words found that the puzzle accepts (anything else, such as a word saved for an older version
+ * of the grid, is ignored).
  *
- * @param found - The words found, with their paths
+ * @param found - The words found
+ * @param puzzle - The puzzle
+ * @returns The different words
+ */
+function acceptedWords(found: FoundPath[], puzzle: Puzzle): string[] {
+    return [...new Set(found.map((f) => f.w))].filter((w) => puzzle.answerSquares.has(w));
+}
+
+/**
+ * Returns all the points a puzzle's List is worth.
+ *
+ * @param puzzle - The puzzle
+ * @returns The points
+ */
+export function listPoints(puzzle: Puzzle): number {
+    return puzzle.list.reduce((sum, w) => sum + wordPoints(w), 0);
+}
+
+/**
+ * Works out which squares are lit: every square a found word can go through, along any of its paths.
+ *
+ * @param found - The words found
+ * @param puzzle - The puzzle
  * @returns The lit squares
  */
-export function litSquares(found: FoundPath[]): Set<number> {
+export function litSquares(found: FoundPath[], puzzle: Puzzle): Set<number> {
     const lit = new Set<number>();
-    for (const f of found) for (const sq of parsePathKey(f.p)) lit.add(sq);
+    for (const w of acceptedWords(found, puzzle)) for (const sq of puzzle.answerSquares.get(w) ?? []) lit.add(sq);
     return lit;
 }
 
 /**
- * Works out how many found words went through each square (how brightly it glows).
+ * Works out each square's dimmer level, from the share of the List words through it that are found. A dark square is
+ * 0, a lit one 1 or more (a bonus word alone gives 1), and DIMMER_FULL only when every List word through it is found.
  *
- * @param found - The words found, with their paths
- * @param squares - How many squares the grid has
- * @returns The count for each square
+ * @param found - The words found
+ * @param puzzle - The puzzle
+ * @returns The level for each square
  */
-export function glowCounts(found: FoundPath[], squares: number): number[] {
-    const counts = new Array<number>(squares).fill(0);
-    for (const f of found) for (const sq of new Set(parsePathKey(f.p))) counts[sq]++;
-    return counts;
+export function dimmerLevels(found: FoundPath[], puzzle: Puzzle): number[] {
+    const lit = litSquares(found, puzzle);
+    const have = new Set(found.map((f) => f.w));
+    const counts = new Array<number>(puzzle.letters.length).fill(0);
+    for (const w of puzzle.list) {
+        if (have.has(w)) for (const sq of puzzle.answerSquares.get(w) ?? []) counts[sq]++;
+    }
+    return counts.map((n, sq) => {
+        if (!lit.has(sq)) return 0;
+        const total = puzzle.coverage[sq];
+        if (total && n === total) return DIMMER_FULL;
+        return total ? 1 + Math.floor((n / total) * (DIMMER_FULL - 1)) : 1;
+    });
 }
 
 /**
- * Checks a traced path: it must spell an answer, and either be a new word or light at least one new square.
+ * Works out the hint numbers: for each square, how many List words not yet found go through it, and start on it.
+ *
+ * @param found - The words found
+ * @param puzzle - The puzzle
+ * @returns The numbers for each square
+ */
+export function hintCounts(found: FoundPath[], puzzle: Puzzle): { through: number[]; starts: number[] } {
+    const have = new Set(found.map((f) => f.w));
+    const through = new Array<number>(puzzle.letters.length).fill(0);
+    const starts = new Array<number>(puzzle.letters.length).fill(0);
+    for (const w of puzzle.list) {
+        if (have.has(w)) continue;
+        for (const sq of puzzle.answerSquares.get(w) ?? []) through[sq]++;
+        for (const sq of puzzle.answerStarts.get(w) ?? []) starts[sq]++;
+    }
+    return { through, starts };
+}
+
+/**
+ * Checks a traced path: it must spell an answer that hasn't been found yet.
  *
  * @param path - The squares traced (already checked to touch, with none used twice)
  * @param puzzle - The puzzle
- * @param found - The words already found (whose squares are already lit)
+ * @param found - The words already found
  * @returns Whether it was accepted, and why or why not
  */
 export function checkTrace(path: number[], puzzle: Puzzle, found: FoundPath[]): TraceResult {
     const word = spell(path, puzzle.letters);
     if (word.length < MIN_WORD_LENGTH) return { ok: false, word, error: 'short' };
     if (!puzzle.answerSquares.has(word)) return { ok: false, word, error: 'unknown' };
-    const lit = litSquares(found);
-    const newlyLit = new Set(path.filter((sq) => !lit.has(sq))).size;
-    const newWord = !found.some((f) => f.w === word);
-    if (!newWord && newlyLit === 0) return { ok: false, word, error: 'found' };
-    return { ok: true, word, newWord, newlyLit, points: newWord ? wordPoints(word) : 0 };
+    if (found.some((f) => f.w === word)) return { ok: false, word, error: 'found' };
+    const onList = puzzle.list.includes(word);
+    return {
+        ok: true,
+        word,
+        onList,
+        spotlight: puzzle.spotlights.includes(word),
+        points: onList ? wordPoints(word) : 0,
+    };
 }
 
 /**
- * Returns the rank for a number of lit squares.
+ * Returns the rank for some points.
  *
- * @param lit - How many squares are lit
- * @param squares - How many squares the grid has
+ * @param points - The List's points found
+ * @param total - All the List's points
  * @returns The rank's index in RANKS
  */
-export function rankIndexFor(lit: number, squares: number): number {
-    const frac = squares ? lit / squares : 0;
+export function rankIndexFor(points: number, total: number): number {
+    const frac = total ? points / total : 0;
     let r = 0;
     for (let i = 0; i < RANKS.length; i++) if (frac >= RANKS[i].min) r = i;
     return r;
 }
 
 /**
- * Sums up some found words: squares lit, different words, points, and the longest word.
+ * Sums up some found words: squares lit, List words, bonus words, points, and Spotlights.
  *
- * @param found - The words found, with their paths (one player's, or everyone's together)
+ * @param found - The words found (one player's, or everyone's together)
+ * @param puzzle - The puzzle
  * @returns The summary
  */
-export function summarize(found: FoundPath[]): { lit: number; words: number; points: number; longest: string } {
-    const words = [...new Set(found.map((f) => f.w))];
+export function summarize(
+    found: FoundPath[],
+    puzzle: Puzzle,
+): { lit: number; words: number; bonus: number; points: number; spotlights: number } {
+    const words = acceptedWords(found, puzzle);
+    const listed = words.filter((w) => puzzle.list.includes(w));
     return {
-        lit: litSquares(found).size,
-        words: words.length,
-        points: words.reduce((sum, w) => sum + wordPoints(w), 0),
-        longest: words.reduce((best, w) => (w.length > best.length ? w : best), ''),
+        lit: litSquares(found, puzzle).size,
+        words: listed.length,
+        bonus: words.length - listed.length,
+        points: listed.reduce((sum, w) => sum + wordPoints(w), 0),
+        spotlights: listed.filter((w) => puzzle.spotlights.includes(w)).length,
     };
+}
+
+/**
+ * Counts, for each player, the List words that nobody else found.
+ *
+ * @param lists - Each player's found words
+ * @param puzzle - The puzzle
+ * @returns The count for each player, in the same order
+ */
+export function onlyFinderCounts(lists: FoundPath[][], puzzle: Puzzle): number[] {
+    const finders = new Map<string, number>();
+    const sets = lists.map((found) => new Set(found.map((f) => f.w)));
+    for (const set of sets) for (const w of set) finders.set(w, (finders.get(w) ?? 0) + 1);
+    return sets.map((set) => puzzle.list.filter((w) => set.has(w) && finders.get(w) === 1).length);
 }
 
 /**

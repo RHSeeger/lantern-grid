@@ -5,7 +5,7 @@ src/
   index.html        The page template (webpack adds the script)
   css/styles.css    All styling (imported by index.ts, so webpack bundles it)
   static/           Copied to the build unchanged, at the same paths
-    data/           words.txt, puzzles.txt, LICENSE-wordlist.txt (made by tools/build-puzzles.ts)
+    data/           words.txt, everyday-words.txt, puzzles.txt, LICENSE-wordlist.txt (made by tools/build-puzzles.ts)
     icons/          App icons (made by tools/make-icons.ts)
     manifest.webmanifest
   typescript/
@@ -21,7 +21,7 @@ src/
     gamelogic/        Rules and calculations, with no DOM (except storage.ts):
       grid.ts             Which squares touch; path keys (one base-36 character per square)
       solver.ts           Loading the word list; finding every word in a grid
-      play.ts             Checking a traced word, points, lit squares, ranks, summaries, combining players
+      play.ts             Checking a traced word, points, lit squares, dimmers, hints, ranks, summaries, combining players
       day.ts              The puzzle list; a player's day (local storage and Firebase's form)
       dates.ts, prng.ts, storage.ts, invites.ts, personal.ts   Shared with the other games (see below)
     family/           Everything that talks to Firebase (loaded with import() only when family play is used):
@@ -100,10 +100,12 @@ What differs is in `data/app.ts` (the name, storage prefix, Firebase key, ...), 
 - `data/puzzles.txt` lists the grids in the order they are played, one per line (36 letters, row by row). Day N after
   `EPOCH_DAY` plays line N, starting over when the list runs out (~4 years).
 - The answers are found in the browser, by searching the grid with `data/words.txt` (a sorted list, so a search stops
-  as soon as no word starts with the letters so far).
-- `tools/build-puzzles.ts` makes each grid by cutting it into winding paths of 4-7 squares and writing an everyday word
-  along each, so every square can be lit; it keeps grids with 120-320 answers and 2-5 "hard" squares (that at most one
-  everyday word reaches).
+  as soon as no word starts with the letters so far). The ones also in `data/everyday-words.txt` are the grid's List.
+- `tools/build-puzzles.ts` makes each grid by cutting it into winding paths of 4-7 squares and writing a common word
+  along each. It keeps grids whose List has 45-65 words, reaches every square, has a word of 7+ letters to be a
+  Spotlight, and leaves at most 6 "hard" squares (that at most one List word reaches).
+- A found word's saved path doesn't decide what it lights: lit squares and dimmers come from the words found and every
+  path the puzzle says they can take. Saved words the puzzle doesn't accept are ignored.
 
 
 ## Build and Deploy

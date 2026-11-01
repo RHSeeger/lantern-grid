@@ -3,11 +3,11 @@
 **Play it here: https://rhseeger.github.io/lantern-grid/**
 
 A daily word-path puzzle. Trace words through a 6 x 6 grid of letters, by dragging from letter to letter (or tapping),
-and every square a word goes through lights up. Can you light the whole grid? Every square can be lit, but a few are
-tricky: only unusual words reach them.
+to find the day's List of everyday words and climb the ranks. Each square is on a dimmer, which rises as you find the
+words through it. Can you bring the whole grid up to full?
 
 Play on your own, or with your family: everyone gets the same grid each day and plays on their own, at their own pace.
-**Compare** shows how each of you is doing (squares lit, words, points), and when you're ready, **Combine our work**
+**Compare** shows how each of you is doing (rank, points, words, the words only you found), and when you're ready, **Combine our work**
 lights everyone's words on your board, in each finder's color, with the family's total. Families are shared with
 [Buzz Off](https://rhseeger.github.io/buzz-off/), [Quilt](https://rhseeger.github.io/quilt/) and
 [Ladder Garden](https://rhseeger.github.io/ladder-garden/): a family made in one shows up in all of them.

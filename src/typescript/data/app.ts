@@ -6,7 +6,7 @@
 export const APP_NAME = 'Lantern Grid';
 
 /** The line under the name on the welcome screen */
-export const TAGLINE = 'Trace words through the letters. Light up every square.';
+export const TAGLINE = 'Trace words through the letters. Bring the whole grid up to full.';
 
 /** Where the game's source code is */
 export const REPO_URL = 'https://github.com/rhseeger/lantern-grid';
@@ -29,5 +29,19 @@ export const MIN_WORD_LENGTH = 4;
 /** The longest word allowed (and the longest path that can be traced) */
 export const MAX_WORD_LENGTH = 16;
 
+/** The shortest word that can be a Spotlight */
+export const SPOTLIGHT_MIN_LENGTH = 7;
+
+/** The most Spotlights a grid has */
+export const SPOTLIGHT_MAX = 3;
+
+/** The highest dimmer level: a square with every List word through it found */
+export const DIMMER_FULL = 5;
+
 /** The files the service worker keeps for offline play */
-export const OFFLINE_FILES = ['data/words.txt', 'data/puzzles.txt', 'data/LICENSE-wordlist.txt'];
+export const OFFLINE_FILES = [
+    'data/words.txt',
+    'data/everyday-words.txt',
+    'data/puzzles.txt',
+    'data/LICENSE-wordlist.txt',
+];

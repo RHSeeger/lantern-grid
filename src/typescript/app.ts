@@ -18,7 +18,17 @@ import { addDays, dayKey, formatLongDate } from './gamelogic/dates';
 import { lettersForDay, loadDay, newDay, parsePlayerDay, parsePuzzles, saveDay } from './gamelogic/day';
 import { isValidPath, pathKey, spell } from './gamelogic/grid';
 import { parseInviteLink } from './gamelogic/invites';
-import { checkTrace, combineFound, glowCounts, litSquares, rankIndexFor, summarize } from './gamelogic/play';
+import {
+    checkTrace,
+    combineFound,
+    dimmerLevels,
+    hintCounts,
+    listPoints,
+    litSquares,
+    onlyFinderCounts,
+    rankIndexFor,
+    summarize,
+} from './gamelogic/play';
 import { loadWordlist, solveGrid } from './gamelogic/solver';
 import { getJSON, remove, setJSON } from './gamelogic/storage';
 import { familyDays, familyName, isCombined, memberInfo, session, shownFound } from './session';
@@ -33,7 +43,7 @@ import { h, icon } from './ui/dom';
 import { getElement } from './ui/getElement';
 import { showHelp } from './ui/help';
 import { isModalOpen, closeModal, openModal } from './ui/modal';
-import { renderProgress, showRankings } from './ui/progress';
+import { renderLights, renderProgress, showRankings } from './ui/progress';
 import { showScoreboard } from './ui/scoreboard';
 import { showSettings } from './ui/settings';
 import { showCelebration, showSplash } from './ui/splash';
@@ -57,7 +67,8 @@ const ERRORS = {
 let board: ReturnType<typeof createBoard>;
 let wordbox: ReturnType<typeof createWordbox>;
 
-/** The lit count shown last time the screen was drawn (-1 before the first), to spot rank-ups */
+/** What was shown last time the screen was drawn (-1 before the first), to spot rank-ups and a fully lit grid */
+let lastPoints = -1;
 let lastLit = -1;
 
 /** Puzzles already worked out, by day key (finding every word takes a moment) */
@@ -81,7 +92,7 @@ function inFamily(): boolean {
 function puzzleFor(key: string): Puzzle {
     let p = puzzleCache.get(key);
     if (!p) {
-        p = solveGrid(lettersForDay(key, session.puzzleLines), session.wordlist);
+        p = solveGrid(lettersForDay(key, session.puzzleLines), session.wordlist, session.everyday);
         puzzleCache.set(key, p);
     }
     return p;
@@ -105,6 +116,7 @@ function dayChanged(): void {
     session.puzzle = puzzleFor(session.todayKey);
     session.path = [];
     session.hintsShown = false;
+    lastPoints = -1;
     lastLit = -1;
     board.setLetters(session.puzzle.letters);
     getElement('date').textContent = formatLongDate(session.todayKey);
@@ -163,7 +175,7 @@ function renderCombineChip(): void {
         Object.entries(familyDays())
             .filter(([uid]) => uid !== session.user?.uid)
             .flatMap(([, d]) => d.found.map((f) => f.w))
-            .filter((w) => !mine.has(w)),
+            .filter((w) => !mine.has(w) && session.puzzle.list.includes(w)),
     );
     chip.textContent = `Combine our work${theirs.size ? ` (+${theirs.size})` : ''}`;
 }
@@ -180,12 +192,18 @@ function renderAll(fresh?: string): void {
     const found = shownFound();
     const combined = isCombined();
     const squares = SIZE * SIZE;
-    const lit = litSquares(found).size;
-    renderProgress(getElement('progress'), lit, squares, combined);
+    const total = listPoints(session.puzzle);
+    const { lit, points, spotlights } = summarize(found, session.puzzle);
+    renderProgress(getElement('progress'), points, total, combined);
+    renderLights(getElement('lights'), spotlights, session.puzzle.spotlights.length, lit, squares);
     const finder = combined ? (uid: string) => memberInfo(uid).color : null;
-    wordbox.render(found, session.puzzle.answers.length, finder, fresh);
+    wordbox.render(found, session.puzzle, finder, fresh);
     renderBoard();
-    if (lastLit >= 0 && lit > lastLit) celebrate(lastLit, lit, combined);
+    if (lastPoints >= 0 && points > lastPoints) celebrate(lastPoints, points, total, combined);
+    if (lastLit >= 0 && lastLit < squares && lit === squares) {
+        setTimeout(() => showToast('Every square is lit! Now bring them up to full.'), 500);
+    }
+    lastPoints = points;
     lastLit = lit;
 }
 
@@ -200,54 +218,41 @@ function renderBoard(): void {
         owners = Array.from({ length: squares }, () => [] as string[]);
         for (const [uid, d] of Object.entries(familyDays())) {
             const color = memberInfo(uid).color;
-            for (const sq of litSquares(d.found)) owners[sq].push(color);
+            for (const sq of litSquares(d.found, session.puzzle)) owners[sq].push(color);
         }
     }
+    const hints = session.hintsShown ? hintCounts(found, session.puzzle) : null;
     board.render({
-        glow: glowCounts(found, squares),
+        levels: dimmerLevels(found, session.puzzle),
         path: session.path,
         owners,
-        hints: session.hintsShown ? hintNumbers(found) : null,
+        hints: hints && hints.through,
+        starts: hints && hints.starts,
     });
     renderWord();
 }
 
 /**
- * Works out the hint numbers: for each square, how many words not yet found can go through it.
+ * Celebrates more points: a celebration for finding the whole List, a short message for a new rank.
  *
- * @param found - The words found
- * @returns The number for each square
- */
-function hintNumbers(found: FoundPath[]): number[] {
-    const have = new Set(found.map((f) => f.w));
-    const counts = new Array<number>(session.puzzle.letters.length).fill(0);
-    for (const [w, squares] of session.puzzle.answerSquares) {
-        if (!have.has(w)) for (const sq of squares) counts[sq]++;
-    }
-    return counts;
-}
-
-/**
- * Celebrates more squares being lit: a celebration for lighting them all, a short message for a new rank.
- *
- * @param before - How many were lit before
- * @param after - How many are lit now
+ * @param before - The points before
+ * @param after - The points now
+ * @param total - All the List's points
  * @param team - Whether it is the family's combined board
  */
-function celebrate(before: number, after: number, team: boolean): void {
-    const squares = SIZE * SIZE;
-    const r0 = rankIndexFor(before, squares);
-    const r1 = rankIndexFor(after, squares);
+function celebrate(before: number, after: number, total: number, team: boolean): void {
+    const r0 = rankIndexFor(before, total);
+    const r1 = rankIndexFor(after, total);
     if (r1 <= r0) return;
-    if (after === squares) {
+    if (after === total) {
         setTimeout(
             () =>
                 showCelebration({
-                    title: 'All Aglow!',
+                    title: `${RANKS[r1].name}!`,
                     emoji: '🏮',
                     text: team
-                        ? 'Together, your family lit every square. Beautiful!'
-                        : 'You lit every square in the grid. Brilliant!',
+                        ? 'Together, your family found every word on the List. The whole grid is at full!'
+                        : 'You found every word on the List. The whole grid is at full!',
                 }),
             700,
         );
@@ -311,8 +316,7 @@ function praise(word: string): string {
 }
 
 /**
- * Returns the message for a word that is already found (with nothing new to light): in combined family play, says who
- * found it.
+ * Returns the message for a word that is already found: in combined family play, says who found it.
  *
  * @param word - The word
  * @returns The message
@@ -342,8 +346,10 @@ function submit(path: number[]): void {
         }
         return;
     }
-    if (result.newWord) flashMessage(praise(result.word), result.word.length >= 7 ? 'big' : 'praise', result.points);
-    else flashMessage(`New path! +${result.newlyLit} lit`, 'praise');
+    if (result.spotlight) flashMessage('Spotlight!', 'big', result.points);
+    else if (result.onList) {
+        flashMessage(praise(result.word), result.word.length >= 7 ? 'big' : 'praise', result.points);
+    } else flashMessage('Bonus word!', 'praise');
     const entry: FoundPath = { w: result.word, p: pathKey(path), at: Date.now() };
     if (inFamily()) {
         saveMine({ [`found/${entry.p}`]: { w: entry.w, at: entry.at } });
@@ -389,7 +395,7 @@ function toggleHints(): void {
     }
     if (!session.mine.hints) {
         const ok = confirm(
-            'Show hints? Each dark square shows how many words you haven’t found yet go through it.' +
+            'Show hints? Each square shows how many List words you haven’t found yet go through it, and start on it.' +
                 (inFamily() ? ' Your family will see that you used hints today.' : ''),
         );
         if (!ok) return;
@@ -447,22 +453,27 @@ function openCompare(): void {
     }
     const combined = isCombined();
     const days = familyDays();
-    const squares = SIZE * SIZE;
-    const rows: ScoreRow[] = Object.entries(days)
-        .filter(([uid, d]) => d.found.length || session.family?.members[uid])
-        .map(([uid, d]) => {
-            const s = summarize(d.found);
+    const puzzle = session.puzzle;
+    const total = listPoints(puzzle);
+    const shown = Object.entries(days).filter(([uid, d]) => d.found.length || session.family?.members[uid]);
+    const only = onlyFinderCounts(
+        shown.map(([, d]) => d.found),
+        puzzle,
+    );
+    const rows: ScoreRow[] = shown
+        .map(([uid, d], i) => {
+            const s = summarize(d.found, puzzle);
             const m = memberInfo(uid);
             return {
                 name: m.name,
                 color: m.color,
                 isMe: uid === session.user?.uid,
                 values: [
-                    `${s.lit}/${squares}`,
-                    String(s.words),
+                    RANKS[rankIndexFor(s.points, total)].name,
                     String(s.points),
-                    // Others' longest words show only as their length until combined
-                    s.longest && (combined || uid === session.user?.uid ? s.longest : `${s.longest.length} letters`),
+                    String(s.words),
+                    String(only[i]),
+                    `${s.spotlights}/${puzzle.spotlights.length}`,
                     d.hints ? '💡' : '',
                 ],
             };
@@ -470,20 +481,32 @@ function openCompare(): void {
         .sort((a, b) => Number(b.isMe) - Number(a.isMe));
     let team: ScoreRow | null = null;
     if (combined) {
-        const all = summarize(combineFound(Object.values(days).map((d) => d.found)));
+        const all = summarize(combineFound(Object.values(days).map((d) => d.found)), puzzle);
         team = {
             name: 'Together',
             color: '',
             isMe: false,
-            values: [`${all.lit}/${squares}`, String(all.words), String(all.points), all.longest, ''],
+            values: [
+                RANKS[rankIndexFor(all.points, total)].name,
+                String(all.points),
+                String(all.words),
+                '',
+                `${all.spotlights}/${puzzle.spotlights.length}`,
+                '',
+            ],
         };
     }
     showScoreboard({
         familyName: familyName() ?? 'your family',
-        columns: ['Lit', 'Words', 'Points', 'Longest', 'Hints'],
+        columns: ['Rank', 'Points', 'Words', 'Only', '★', 'Hints'],
         rows,
         team,
         combined,
+        note: h(
+            'p',
+            { class: 'muted small' },
+            `Today’s List is worth ${total} points. “Only” is the List words nobody else found; ★ is Spotlights.`,
+        ),
         onCombine: () => setCombined(true),
         onUncombine: () => setCombined(false),
     });
@@ -514,11 +537,12 @@ async function openYesterday(): Promise<void> {
  * Opens the welcome screen.
  */
 function openSplash(): void {
-    const s = summarize(session.mine.found);
+    const s = summarize(session.mine.found, session.puzzle);
+    const rank = RANKS[rankIndexFor(s.points, listPoints(session.puzzle))].name;
     showSplash({
         todayKey: session.todayKey,
         familyName: familyName(),
-        progress: s.words ? `You've lit ${s.lit} of ${SIZE * SIZE} squares with ${s.words} words.` : null,
+        progress: s.words ? `You're at ${rank}, with ${s.words} of ${session.puzzle.list.length} words.` : null,
         logo: LOGO_SVG,
     });
 }
@@ -661,7 +685,9 @@ function wireUi(): void {
         renderBoard();
     });
     getElement('btn-enter').addEventListener('click', () => submit(session.path));
-    getElement('progress').addEventListener('click', () => showRankings(litSquares(shownFound()).size, SIZE * SIZE));
+    getElement('progress').addEventListener('click', () =>
+        showRankings(summarize(shownFound(), session.puzzle).points, listPoints(session.puzzle)),
+    );
     getElement('combine-chip').addEventListener('click', toggleCombined);
     getElement('mode-chip').addEventListener('click', () => void openPlayMode());
     getElement('btn-play-local').addEventListener('click', () => switchToLocal('Playing on your own for now.'));
@@ -693,14 +719,16 @@ export async function startApp(): Promise<void> {
     wireUi();
     renderModeChip();
     try {
-        const [wordlist, lines] = await Promise.all([
+        const [wordlist, everyday, lines] = await Promise.all([
             loadWordlist('data/words.txt'),
+            loadWordlist('data/everyday-words.txt'),
             fetch('data/puzzles.txt').then((r) => {
                 if (!r.ok) throw new Error(`Could not load puzzles (${r.status})`);
                 return r.text();
             }),
         ]);
         session.wordlist = wordlist;
+        session.everyday = everyday.set;
         session.puzzleLines = parsePuzzles(lines);
     } catch (e) {
         getElement('loading').textContent = "Couldn't load the puzzle. Check your connection and reload.";

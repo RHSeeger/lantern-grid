@@ -1,13 +1,14 @@
 import { SIZE } from '../data/app';
+import { RANKS } from '../data/ranks';
 import { formatLongDate } from '../gamelogic/dates';
-import { litSquares, wordPoints } from '../gamelogic/play';
+import { listPoints, litSquares, rankIndexFor, summarize, wordPoints } from '../gamelogic/play';
 import type { FoundPath } from '../types/FoundPath';
 import type { Puzzle } from '../types/Puzzle';
 import { cap, h } from './dom';
 import { openModal } from './modal';
 
 /**
- * The Yesterday screen: yesterday's grid (with what was lit), and every answer, with the ones found checked.
+ * The Yesterday screen: yesterday's grid (with what was lit), and the List, with the words found checked.
  */
 
 /**
@@ -24,10 +25,11 @@ export function showYesterday(
     found: FoundPath[],
     finder: ((uid: string) => string) | null,
 ): void {
-    const lit = litSquares(found);
+    const lit = litSquares(found, puzzle);
+    const summary = summarize(found, puzzle);
     const by = new Map<string, string | undefined>();
     for (const f of found) if (!by.has(f.w)) by.set(f.w, f.by);
-    const longestFirst = [...puzzle.answers].sort((a, b) => wordPoints(b) - wordPoints(a) || (a < b ? -1 : 1));
+    const longestFirst = [...puzzle.list].sort((a, b) => wordPoints(b) - wordPoints(a) || (a < b ? -1 : 1));
     openModal({
         title: "Yesterday's Answers",
         content: [
@@ -40,7 +42,8 @@ export function showYesterday(
             h(
                 'p',
                 {},
-                `${lit.size} of ${puzzle.letters.length} squares lit, ${by.size} of ${puzzle.answers.length} words found.`,
+                `${RANKS[rankIndexFor(summary.points, listPoints(puzzle))].name}: ${summary.words} of ${puzzle.list.length} ` +
+                    `words found, ${summary.bonus} bonus, and ${lit.size} of ${puzzle.letters.length} squares lit.`,
             ),
             h(
                 'ul',
@@ -56,6 +59,7 @@ export function showYesterday(
                             who &&
                             h('span', { class: `player-dot player-${finder(who)}`, 'aria-hidden': 'true' }),
                         cap(w),
+                        puzzle.spotlights.includes(w) && h('span', { class: 'spotlight-star' }, ' ★'),
                     );
                 }),
             ),

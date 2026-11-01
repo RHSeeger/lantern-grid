@@ -4,19 +4,20 @@ import { MAX_WORD_LENGTH, MIN_WORD_LENGTH, SIZE } from '../src/typescript/data/a
 import { neighbors } from '../src/typescript/gamelogic/grid';
 import { seededRandom, shuffleInPlace } from '../src/typescript/gamelogic/prng';
 import { parseWordlist, solveGrid } from '../src/typescript/gamelogic/solver';
+import type { Puzzle } from '../src/typescript/types/Puzzle';
 import { arg, loadScowl, parseBlocklist, SCOWL_VERSION } from './scowl';
 import type { GridTuning } from './types/GridTuning';
 
 /**
- * Builds src/static/data/words.txt, puzzles.txt and LICENSE-wordlist.txt from SCOWL.
+ * Builds src/static/data/words.txt, everyday-words.txt, puzzles.txt and LICENSE-wordlist.txt from SCOWL.
  *
  *   npm run build:puzzles -- [--size 50] [--days 1500] [--scowl path/to/scowl.tar.gz]
  *
  * Each grid is made by cutting the 6 x 6 grid into winding paths of 4 to 7 squares, and writing a common word along
- * each one. So every square is part of at least one word, and lighting the whole grid is always possible. The grid is
- * then searched for every word it holds, and kept only if it has a good number of answers and a few squares that
- * hardly any everyday words reach (the ones the family will need each other for). Without --scowl, SCOWL is downloaded once into
- * tools/.cache/. The output is the same every time for the same source and settings, and is committed.
+ * each one. The grid is then searched for every word it holds, and kept only if its List (the everyday words, the ones
+ * that count for rank) is a good length, reaches every square, has a long word to be a Spotlight, and doesn't leave too
+ * many squares that hardly any words reach. Without --scowl, SCOWL is downloaded once into tools/.cache/. The output
+ * is the same every time for the same source and settings, and is committed.
  */
 
 /** The project's root directory */
@@ -30,13 +31,13 @@ const SEED_SIZE = 35;
 
 /** The limits for keeping a grid */
 export const TUNING: GridTuning = {
-    minAnswers: 120,
-    maxAnswers: 320,
-    commonSize: 20,
+    everydaySize: 20,
+    minList: 45,
+    maxList: 65,
+    minSpotlights: 1,
     hardCoverage: 1,
-    minHard: 2,
-    maxHard: 5,
-    seed: 'lantern-grid puzzles v1',
+    maxHard: 6,
+    seed: 'lantern-grid puzzles v2',
 };
 
 /**
@@ -160,7 +161,21 @@ export function makeGrid(rand: () => number, seedsByLength: Map<number, string[]
 }
 
 /**
- * Builds the word list, the puzzle list and the license file.
+ * Decides whether to keep a grid, from its List.
+ *
+ * @param puzzle - The grid, solved with only the everyday words
+ * @returns True if its List is a good length, reaches every square, and has a Spotlight word
+ */
+export function gridIsGood(puzzle: Puzzle): boolean {
+    const n = puzzle.list.length;
+    if (n < TUNING.minList || n > TUNING.maxList) return false;
+    if (puzzle.coverage.some((c) => c === 0)) return false;
+    if (puzzle.spotlights.length < TUNING.minSpotlights) return false;
+    return puzzle.coverage.filter((c) => c <= TUNING.hardCoverage).length <= TUNING.maxHard;
+}
+
+/**
+ * Builds the word lists, the puzzle list and the license file.
  */
 export async function main(): Promise<void> {
     const size = Number(arg('size') ?? 50);
@@ -175,34 +190,34 @@ export async function main(): Promise<void> {
     seeds.sort();
     const seedsByLength = new Map<number, string[]>();
     for (const w of seeds) seedsByLength.set(w.length, [...(seedsByLength.get(w.length) ?? []), w]);
+    const everydayWords = [...new Set(scowl.wordsUpTo(TUNING.everydaySize))].filter((w) => wordSet.has(w)).sort();
+    const everyday = parseWordlist(everydayWords.join('\n'));
     const wordlist = parseWordlist(words.join('\n'));
-    const common = parseWordlist(
-        [...new Set(scowl.wordsUpTo(TUNING.commonSize))].filter((w) => wordSet.has(w)).join('\n'),
-    );
 
     const rand = seededRandom(TUNING.seed);
     const grids: string[] = [];
     const seen = new Set<string>();
     let tries = 0;
     let answerTotal = 0;
+    let listTotal = 0;
     while (grids.length < days) {
         tries++;
         const letters = makeGrid(rand, seedsByLength);
         if (!letters) continue;
         const line = letters.join('');
         if (seen.has(line)) continue;
-        const puzzle = solveGrid(letters, wordlist);
-        if (puzzle.coverage.some((c) => c === 0)) continue;
-        if (puzzle.answers.length < TUNING.minAnswers || puzzle.answers.length > TUNING.maxAnswers) continue;
-        const hard = solveGrid(letters, common).coverage.filter((c) => c <= TUNING.hardCoverage).length;
-        if (hard < TUNING.minHard || hard > TUNING.maxHard) continue;
+        // Searching for just the everyday words first is much quicker, and rules out most grids
+        const list = solveGrid(letters, everyday, everyday.set);
+        if (!gridIsGood(list)) continue;
         seen.add(line);
         grids.push(line);
-        answerTotal += puzzle.answers.length;
+        answerTotal += solveGrid(letters, wordlist, everyday.set).answers.length;
+        listTotal += list.list.length;
     }
 
     await mkdir(DATA_DIR, { recursive: true });
     await writeFile(path.join(DATA_DIR, 'words.txt'), words.join('\n') + '\n');
+    await writeFile(path.join(DATA_DIR, 'everyday-words.txt'), everydayWords.join('\n') + '\n');
     await writeFile(path.join(DATA_DIR, 'puzzles.txt'), grids.join('\n') + '\n');
     await writeFile(
         path.join(DATA_DIR, 'LICENSE-wordlist.txt'),
@@ -213,6 +228,7 @@ export async function main(): Promise<void> {
     console.log(
         `size ${size}: ${words.length} words, ${seeds.length} path words. ${grids.length} grids ` +
             `(~${(grids.length / 365).toFixed(1)} years) from ${tries} tries; ` +
-            `avg ${(answerTotal / grids.length).toFixed(1)} answers.`,
+            `avg ${(listTotal / grids.length).toFixed(1)} List words, ` +
+            `${(answerTotal / grids.length).toFixed(1)} words accepted.`,
     );
 }

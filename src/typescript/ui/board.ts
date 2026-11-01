@@ -1,10 +1,10 @@
-import { SIZE } from '../data/app';
+import { DIMMER_FULL, SIZE } from '../data/app';
 import { touches } from '../gamelogic/grid';
 import type { BoardView } from '../types/BoardView';
 import { h } from './dom';
 
 /**
- * The board: the grid of letters, lit squares, and tracing a word. A word is traced by dragging a finger (or the
+ * The board: the grid of letters, each square's dimmer, and tracing a word. A word is traced by dragging a finger (or the
  * mouse) through the letters, and submitted on letting go; or by tapping the letters one at a time, and tapping the
  * last one again (or Enter). While dragging, only the middle of each square counts, so moving corner to corner
  * doesn't catch the squares beside the way.
@@ -31,6 +31,7 @@ export function createBoard(
             { class: 'sq', 'data-i': String(i), role: 'gridcell' },
             h('span', { class: 'sq-letter' }),
             h('span', { class: 'sq-hint', 'aria-hidden': 'true' }),
+            h('span', { class: 'sq-start', 'aria-hidden': 'true' }),
             h('span', { class: 'sq-owners', 'aria-hidden': 'true' }),
         ),
     );
@@ -143,15 +144,17 @@ export function createBoard(
         render(view) {
             path = view.path;
             squares.forEach((el, i) => {
-                const g = view.glow[i] ?? 0;
+                const level = view.levels[i] ?? 0;
                 const k = view.path.indexOf(i);
-                el.className = `sq${g ? ` lit glow-${Math.min(g, 3)}` : ''}${k >= 0 ? ' traced' : ''}`;
+                el.className = `sq${level ? ` lit dim-${level}` : ''}${k >= 0 ? ' traced' : ''}`;
                 if (k >= 0 && k === view.path.length - 1) el.classList.add('last');
-                const label = `${(letters[i] ?? '').toUpperCase()}${g ? ', lit' : ''}`;
-                el.setAttribute('aria-label', label);
+                const state = level === DIMMER_FULL ? ', at full' : level ? ', lit' : '';
+                el.setAttribute('aria-label', `${(letters[i] ?? '').toUpperCase()}${state}`);
                 const hint = el.children[1] as HTMLElement;
-                hint.textContent = view.hints && !g ? String(view.hints[i]) : '';
-                const owners = el.children[2] as HTMLElement;
+                hint.textContent = view.hints?.[i] ? String(view.hints[i]) : '';
+                const start = el.children[2] as HTMLElement;
+                start.textContent = view.starts?.[i] ? `▸${view.starts[i]}` : '';
+                const owners = el.children[3] as HTMLElement;
                 owners.replaceChildren(
                     ...(view.owners?.[i] ?? []).map((c) => h('span', { class: `player-dot player-${c}` })),
                 );

@@ -31,7 +31,10 @@ beforeAll(async () => {
     global.fetch = jest.fn(async (url: string) => ({
         ok: true,
         status: 200,
-        text: async () => (String(url).includes('words') ? 'cart\nrate\n' : `${GRID}\n`),
+        text: async () => {
+            if (String(url).includes('everyday')) return 'cart\nrate\n';
+            return String(url).includes('words') ? 'carat\ncart\nrate\n' : `${GRID}\n`;
+        },
     })) as unknown as typeof fetch;
     await startApp();
     (document.querySelector('.grid') as HTMLElement).getBoundingClientRect = () =>
@@ -46,7 +49,8 @@ describe('Lantern Grid', () => {
         closeModal();
         expect(document.querySelectorAll('.sq')).toHaveLength(36);
         expect(document.querySelector('.sq')?.textContent).toContain('C');
-        expect(document.getElementById('progress')?.textContent).toContain('0/36');
+        expect(document.getElementById('progress')?.textContent).toContain('0/2');
+        expect(document.getElementById('lights')?.textContent).toContain('0/36 lit');
     });
 
     it('traces a word by tapping, lights it, and saves it', () => {
@@ -54,10 +58,24 @@ describe('Lantern Grid', () => {
         expect(document.getElementById('word-text')?.textContent).toBe('CART');
         tap(3); // tapping the last letter again submits the word
         expect(document.querySelectorAll('.sq.lit')).toHaveLength(4);
-        expect(document.getElementById('progress')?.textContent).toContain('4/36');
+        expect(document.getElementById('progress')?.textContent).toContain('1/2');
+        expect(document.getElementById('lights')?.textContent).toContain('4/36 lit');
         expect(document.querySelector('.wordbox-count')?.textContent).toBe('1 of 2 words');
         const saved = Object.keys(localStorage).find((k) => k.startsWith('lantern:day:'));
         expect(saved && localStorage.getItem(saved)).toContain('"w":"cart"');
+    });
+
+    it('shows hints: the missing List words through each square, and starting on it', () => {
+        window.confirm = jest.fn(() => true);
+        const hints = document.getElementById('btn-hints') as HTMLElement;
+        hints.click();
+        // "rate" is still missing, and starts on the r
+        const r = document.querySelectorAll('.sq')[2];
+        expect(r.querySelector('.sq-hint')?.textContent).toBe('1');
+        expect(r.querySelector('.sq-start')?.textContent).toBe('▸1');
+        expect(document.querySelectorAll('.sq')[0].querySelector('.sq-hint')?.textContent).toBe('');
+        hints.click();
+        expect(r.querySelector('.sq-hint')?.textContent).toBe('');
     });
 
     it('traces a word by dragging, and submits it on letting go', () => {
@@ -75,9 +93,21 @@ describe('Lantern Grid', () => {
         expect(document.querySelector('.wordbox-count')?.textContent).toBe('2 of 2 words');
     });
 
-    it('rejects a word that lights nothing new', () => {
+    it('rejects a word already found', () => {
         [0, 1, 2, 3, 3].forEach(tap);
         expect(document.getElementById('message')?.textContent).toBe('Already found');
         expect(document.querySelectorAll('.sq.lit')).toHaveLength(7);
+    });
+
+    it('brings a square to full only when every List word through it is found', () => {
+        expect(document.querySelectorAll('.sq.dim-5')).toHaveLength(7);
+        expect(document.getElementById('progress')?.textContent).toContain('Full Output');
+    });
+
+    it('accepts a bonus word, without points', () => {
+        [0, 1, 2, 8, 14, 14].forEach(tap);
+        expect(document.getElementById('message')?.textContent).toBe('Bonus word!');
+        expect(document.querySelector('.wordbox-count')?.textContent).toBe('2 of 2 words +1 bonus');
+        expect(document.getElementById('progress')?.textContent).toContain('2/2');
     });
 });

@@ -6,17 +6,17 @@
  * The limits for keeping a generated grid, and the seed that makes the list the same every time.
  */
 export type GridTuning = {
-    /** The fewest answers a grid may have */
-    minAnswers: number;
-    /** The most answers a grid may have */
-    maxAnswers: number;
-    /** The SCOWL size that counts as an everyday word, for finding the hard squares */
-    commonSize: number;
-    /** A square is hard if this many everyday words or fewer go through it (the rest are rarer words) */
+    /** The SCOWL size that counts as an everyday word (the words on a grid's List, the ones that count for rank) */
+    everydaySize: number;
+    /** The fewest words on a grid's List */
+    minList: number;
+    /** The most words on a grid's List */
+    maxList: number;
+    /** The fewest Spotlight words (long List words) a grid may have */
+    minSpotlights: number;
+    /** A square is hard if this many List words or fewer go through it */
     hardCoverage: number;
-    /** The fewest hard squares: the ones the family will need each other for */
-    minHard: number;
-    /** The most hard squares */
+    /** The most hard squares a grid may have */
     maxHard: number;
     /** Seeds the random choices */
     seed: string;

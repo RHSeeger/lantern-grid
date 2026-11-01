@@ -1,9 +1,9 @@
 # Lantern Grid
 
 A daily word-tracing puzzle for the family. Each day has one 6 x 6 grid of letters. Players trace words through
-touching squares, and every square a word passes through lights up. The goal is to light all 36. Every grid can be
-fully lit, but a few squares each day are reached by hardly any everyday words, so they're the ones to work on
-together. It's one of three games built together on 2026-10-29 (with Quilt and Ladder Garden), next to the family's
+touching squares to climb the ranks by finding the grid's List of everyday words. Each square is on a dimmer, which
+rises as the List words through it are found, so the goal is to bring the whole grid up to full. It's paced like
+Spelling Bee: a good rank is within reach alone, a better one together, and finding every word is rare. It's one of three games built together on 2026-10-29 (with Quilt and Ladder Garden), next to the family's
 first game, Buzz Off. All four share families. The brief for all three was:
 
 - Each person plays on their own, at their own pace.
@@ -30,7 +30,7 @@ first game, Buzz Off. All four share families. The brief for all three was:
 
 - **Built and passing:** the whole game works: local play, family play (compare, combine), invites, sign-in, ranks,
   hints, Yesterday's Answers, help, menu, dark mode, offline, and installing it as an app. `npm run lint`, `npm test`
-  (48 tests) and `npm run build` all pass.
+  (58 tests) and `npm run build` all pass.
 - **Not yet tried for real:** it has been tested only in Jest (jsdom, including whole-game tests that trace words with
   pointer events, and family play against a fake Firebase). It has not been run on a real phone, in a real browser, or
   against the real Firebase database.
@@ -51,8 +51,8 @@ first game, Buzz Off. All four share families. The brief for all three was:
     - Tracing, both drag and tap, on small screens. The drag's catch area (`DRAG_RADIUS` in `ui/board.ts`) is the main
       thing to adjust.
     - How long the answers take to work out on older phones.
-    - Whether the hard squares feel fun or unfair.
-    - Whether the ranks come at good points.
+    - Whether the ranks come at the intended pace (see `game-design.md`, Scoring and Ranks).
+    - Whether the List feels fair: words it should have, and words it shouldn't.
 3. **Tune.** Adjust the grids and ranks from what the family says (see Tuning, below), **before** the grid list settles,
    because rebuilding changes every day's grid.
 4. **Grow.** The ideas in `todo.md` and the Open Questions in `game-design.md`, such as stats and streaks like Buzz
@@ -61,12 +61,13 @@ first game, Buzz Off. All four share families. The brief for all three was:
 ## Tuning
 
 - **The grids:** `TUNING` in `tools/build-puzzles.ts` sets:
-    - The number of answers per grid (120-320).
-    - What counts as a hard square: reached by at most 1 everyday word (SCOWL size 20).
-    - How many hard squares each grid has (2-5).
+    - What counts as an everyday word (SCOWL size 20).
+    - The number of List words per grid (45-65).
+    - What counts as a hard square (at most 1 List word through it), and the most a grid may have (6).
 - **The word list:** SCOWL size 50, minus `tools/blocklist.txt`.
+- **Spotlights:** `SPOTLIGHT_MIN_LENGTH` and `SPOTLIGHT_MAX` in `data/app.ts`. **Dimmer levels:** `DIMMER_FULL`.
 - **Ranks:** `data/ranks.ts`. **Points:** `wordPoints()` in `gamelogic/play.ts`.
-- **Rebuilding:** `npm run build:puzzles` rebuilds `words.txt` and `puzzles.txt`. It downloads SCOWL into
+- **Rebuilding:** `npm run build:puzzles` rebuilds `words.txt`, `everyday-words.txt` and `puzzles.txt`. It downloads SCOWL into
   `tools/.cache/` the first time, or uses a copy given with `--scowl <file>`. The output is the same every time for the
   same settings.
 - **Rebuilding changes every day's grid, including today's.** Once the family is playing, a rebuild would change the

@@ -1,7 +1,7 @@
 {
   "name": "Lantern Grid",
   "short_name": "Lantern Grid",
-  "description": "A daily word-path puzzle: trace words through a grid of letters, and light up every square.",
+  "description": "A daily word-path puzzle: trace words through a grid of letters, and bring it all up to full.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -1,9 +1,11 @@
 import type { FoundPath } from '../types/FoundPath';
+import type { Puzzle } from '../types/Puzzle';
 import { cap, h, icon } from './dom';
 
 /**
- * The found-words box: how many words are found, and (opened) the list of them, alphabetically. Once everyone's work
- * is combined, each word has a dot in the color of whoever found it first.
+ * The found-words box: how many of the List's words are found (and any bonus words), and (opened) the list of them,
+ * alphabetically. Spotlights have a star, and bonus words look quieter. Once everyone's work is combined, each word has
+ * a dot in the color of whoever found it first.
  */
 
 /**
@@ -13,7 +15,7 @@ import { cap, h, icon } from './dom';
  * @returns A function that draws it
  */
 export function createWordbox(root: HTMLElement): {
-    render: (found: FoundPath[], total: number, finder: ((uid: string) => string) | null, fresh?: string) => void;
+    render: (found: FoundPath[], puzzle: Puzzle, finder: ((uid: string) => string) | null, fresh?: string) => void;
 } {
     const count = h('span', { class: 'wordbox-count' });
     const preview = h('span', { class: 'wordbox-preview' });
@@ -31,11 +33,14 @@ export function createWordbox(root: HTMLElement): {
         head.setAttribute('aria-expanded', String(open));
     });
     return {
-        render(found, total, finder, fresh) {
+        render(found, puzzle, finder, fresh) {
             const first = new Map<string, FoundPath>();
-            for (const f of found) if (!first.has(f.w)) first.set(f.w, f);
+            for (const f of found) if (puzzle.answerSquares.has(f.w) && !first.has(f.w)) first.set(f.w, f);
             const words = [...first.keys()].sort();
-            count.textContent = `${words.length} of ${total} words`;
+            const onList = new Set(puzzle.list);
+            const listed = words.filter((w) => onList.has(w)).length;
+            const bonus = words.length - listed;
+            count.textContent = `${listed} of ${puzzle.list.length} words${bonus ? ` +${bonus} bonus` : ''}`;
             preview.replaceChildren(
                 ...[...first.keys()]
                     .reverse()
@@ -45,11 +50,17 @@ export function createWordbox(root: HTMLElement): {
             list.replaceChildren(
                 ...words.map((w) => {
                     const by = first.get(w)?.by;
+                    const classes = [
+                        w === fresh ? 'fresh' : '',
+                        finder && by ? 'by-player' : '',
+                        onList.has(w) ? '' : 'bonus-word',
+                    ];
                     return h(
                         'li',
-                        { class: `${w === fresh ? 'fresh' : ''}${finder && by ? ' by-player' : ''}` },
+                        { class: classes.filter(Boolean).join(' ') },
                         finder && by && h('span', { class: `player-dot player-${finder(by)}`, 'aria-hidden': 'true' }),
                         cap(w),
+                        puzzle.spotlights.includes(w) && h('span', { class: 'spotlight-star' }, ' ★'),
                     );
                 }),
             );

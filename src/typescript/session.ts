@@ -19,6 +19,8 @@ import type { Wordlist } from './types/Wordlist';
 export const session = {
     /** The word list */
     wordlist: null as unknown as Wordlist,
+    /** The everyday words: the ones that go on a grid's List */
+    everyday: new Set<string>(),
     /** The puzzle list (each grid's letters) */
     puzzleLines: [] as string[],
     /** Who the player is playing with */
