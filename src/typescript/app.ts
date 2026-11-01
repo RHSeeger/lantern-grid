@@ -22,11 +22,13 @@ import {
     checkTrace,
     combineFound,
     dimmerLevels,
-    hintCounts,
     listPoints,
     litSquares,
+    meterReadings,
     onlyFinderCounts,
     rankIndexFor,
+    readSquares,
+    squareClue,
     summarize,
 } from './gamelogic/play';
 import { loadWordlist, solveGrid } from './gamelogic/solver';
@@ -70,6 +72,9 @@ let wordbox: ReturnType<typeof createWordbox>;
 /** What was shown last time the screen was drawn (-1 before the first), to spot rank-ups and a fully lit grid */
 let lastPoints = -1;
 let lastLit = -1;
+
+/** Dismisses the clue showing, if any, so that the next one shows straight away */
+let dismissClue: (() => void) | null = null;
 
 /** Puzzles already worked out, by day key (finding every word takes a moment) */
 const puzzleCache = new Map<string, Puzzle>();
@@ -115,7 +120,7 @@ function openLocalDay(key: string): void {
 function dayChanged(): void {
     session.puzzle = puzzleFor(session.todayKey);
     session.path = [];
-    session.hintsShown = false;
+    session.clueMode = false;
     lastPoints = -1;
     lastLit = -1;
     board.setLetters(session.puzzle.letters);
@@ -193,9 +198,9 @@ function renderAll(fresh?: string): void {
     const combined = isCombined();
     const squares = SIZE * SIZE;
     const total = listPoints(session.puzzle);
-    const { lit, points, spotlights } = summarize(found, session.puzzle);
+    const { lit, cleared, points, spotlights } = summarize(found, session.puzzle);
     renderProgress(getElement('progress'), points, total, combined);
-    renderLights(getElement('lights'), spotlights, session.puzzle.spotlights.length, lit, squares);
+    renderLights(getElement('lights'), spotlights, session.puzzle.spotlights.length, cleared, lit, squares);
     const finder = combined ? (uid: string) => memberInfo(uid).color : null;
     wordbox.render(found, session.puzzle, finder, fresh);
     renderBoard();
@@ -221,14 +226,11 @@ function renderBoard(): void {
             for (const sq of litSquares(d.found, session.puzzle)) owners[sq].push(color);
         }
     }
-    const hints = session.hintsShown ? hintCounts(found, session.puzzle) : null;
-    board.render({
-        levels: dimmerLevels(found, session.puzzle),
-        path: session.path,
-        owners,
-        hints: hints && hints.through,
-        starts: hints && hints.starts,
-    });
+    const { through, starts } = meterReadings(found, session.puzzle);
+    board.render({ levels: dimmerLevels(found, session.puzzle), path: session.path, owners, through, starts });
+    const bulb = document.getElementById('btn-hints');
+    bulb?.classList.toggle('active', session.clueMode);
+    bulb?.setAttribute('aria-pressed', String(session.clueMode));
     renderWord();
 }
 
@@ -346,11 +348,18 @@ function submit(path: number[]): void {
         }
         return;
     }
-    if (result.spotlight) flashMessage('Spotlight!', 'big', result.points);
-    else if (result.onList) {
-        flashMessage(praise(result.word), result.word.length >= 7 ? 'big' : 'praise', result.points);
-    } else flashMessage('Bonus word!', 'praise');
     const entry: FoundPath = { w: result.word, p: pathKey(path), at: Date.now() };
+    const before = shownFound();
+    const after = [...before, entry];
+    if (result.onList) {
+        const cleared = summarize(after, session.puzzle).cleared - summarize(before, session.puzzle).cleared;
+        const text = result.spotlight ? 'Spotlight!' : praise(result.word);
+        const big = result.spotlight || result.word.length >= 7;
+        flashMessage(`${text}${cleared ? ` ${cleared} cleared!` : ''}`, big ? 'big' : 'praise', result.points);
+    } else {
+        const readings = readSquares(after, session.puzzle).size - readSquares(before, session.puzzle).size;
+        flashMessage(readings ? `Bonus word! ${readings} new readings` : 'Bonus word!', 'praise');
+    }
     if (inFamily()) {
         saveMine({ [`found/${entry.p}`]: { w: entry.w, at: entry.at } });
         return;
@@ -384,19 +393,34 @@ function onKey(e: KeyboardEvent): void {
 }
 
 /**
- * Turns the hint numbers on or off. The first time each day, asks first, and records that hints were used (the
- * family can see it on the Compare screen).
+ * Shows a clue for a square: how long one of its missing List words is, and how it starts.
+ *
+ * @param square - The square tapped
  */
-function toggleHints(): void {
-    if (session.hintsShown) {
-        session.hintsShown = false;
+function showClue(square: number): void {
+    const clue = squareClue(shownFound(), session.puzzle, square);
+    dismissClue?.();
+    dismissClue = showToast(
+        clue
+            ? `A ${clue.length}-letter word through here starts ${clue.start.toUpperCase()}.`
+            : 'No words left through this square.',
+    );
+}
+
+/**
+ * Turns the bulb on or off: while it's on, tapping a square shows a clue. The first time each day, asks first, and
+ * records that clues were used (the family can see it on the Compare screen).
+ */
+function toggleClues(): void {
+    if (session.clueMode) {
+        session.clueMode = false;
         renderAll();
         return;
     }
     if (!session.mine.hints) {
         const ok = confirm(
-            'Show hints? Each square shows how many List words you haven’t found yet go through it, and start on it.' +
-                (inFamily() ? ' Your family will see that you used hints today.' : ''),
+            'Use clues? Tap a square to see how long one of its missing words is, and how it starts.' +
+                (inFamily() ? ' Your family will see that you used clues today.' : ''),
         );
         if (!ok) return;
         if (inFamily()) saveMine({ hints: true });
@@ -405,8 +429,10 @@ function toggleHints(): void {
             saveDay(session.mine);
         }
     }
-    session.hintsShown = true;
+    session.clueMode = true;
+    session.path = [];
     renderAll();
+    flashMessage('Tap a square for a clue', 'praise');
 }
 
 /**
@@ -498,7 +524,7 @@ function openCompare(): void {
     }
     showScoreboard({
         familyName: familyName() ?? 'your family',
-        columns: ['Rank', 'Points', 'Words', 'Only', '★', 'Hints'],
+        columns: ['Rank', 'Points', 'Words', 'Only', '★', 'Clues'],
         rows,
         team,
         combined,
@@ -648,10 +674,12 @@ function wireUi(): void {
             renderBoard();
         },
         onSubmit: submit,
+        clueMode: () => session.clueMode,
+        onClue: showClue,
     });
     wordbox = createWordbox(getElement('wordbox'));
     const toolbar: [string, Parameters<typeof icon>[0], string, () => void][] = [
-        ['hints', 'hint', 'Hints', toggleHints],
+        ['hints', 'hint', 'Clues', toggleClues],
         ['yesterday', 'yesterday', "Yesterday's answers", () => void openYesterday()],
         ['compare', 'stats', 'Compare with your family', openCompare],
         ['help', 'help', 'How to play', showHelp],

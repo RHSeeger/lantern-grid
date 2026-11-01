@@ -79,4 +79,19 @@ lighting theme (the user's wife works in lighting codes and regulations) and sho
 points come from a simulation with invented skills, so they need checking against real play.
 **Affects:** game-design.md, code-design.md, overview.md, how-the-game-works.md, ui/help.ts, gamelogic/play.ts, solver.ts,
 data/ranks.ts, tools/build-puzzles.ts, the data files
+**Status:** Active, except its rank points and hints: see 2026-11-01 — Bonus words take meter readings; lower ranks; clues
+
+## 2026-11-01 — Bonus words take meter readings; lower ranks; clues
+**Decision:** A bonus word still scores nothing, but shows, on every square it can go through, how many List words not
+yet found go through it and start on it. The hint numbers are gone as a hint: the bulb now gives a clue on a tapped square
+(length and first two letters of its shortest missing word), and using it is what Compare shows. "Cleared" (a square with
+all its List words found) is a counted goal. Rank points are lowered: Egress 5%, Ambient 12%, Task Light 20%, Up to Code
+30%, High Bay 45%, Exceeds Code 60%, Daylight 85%. The saved field keeps the name `hints`, so the database rules needn't
+change.
+**Why:** The user's first real session ended at 16 of 61 List words and 23% of the points, with 17 words earning nothing,
+which was frustrating, while they enjoyed "clearing" letters with the numbers on. The user chose readings over the
+proposal to give bonus words rank credit: finding one gives a clue to the real words, rather than inflating the score, and
+keeps Full Output meaning every word. Bonus words reveal quickly (typically 19 squares after 5 of them, 31 after 17).
+**Affects:** game-design.md, how-the-game-works.md, ui/help.ts, ui/board.ts, ui/progress.ts, gamelogic/play.ts, app.ts,
+data/ranks.ts
 **Status:** Active

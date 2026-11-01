@@ -3,11 +3,13 @@ import {
     checkTrace,
     combineFound,
     dimmerLevels,
-    hintCounts,
     listPoints,
     litSquares,
+    meterReadings,
     onlyFinderCounts,
     rankIndexFor,
+    readSquares,
+    squareClue,
     summarize,
     wordPoints,
 } from '../../src/typescript/gamelogic/play';
@@ -123,7 +125,7 @@ describe('scoring', () => {
     it('ignores words the puzzle does not accept', () => {
         const have = [found('zzzz', [0, 1, 2, 3])];
         expect(litSquares(have, PUZZLE).size).toBe(0);
-        expect(summarize(have, PUZZLE)).toEqual({ lit: 0, words: 0, bonus: 0, points: 0, spotlights: 0 });
+        expect(summarize(have, PUZZLE)).toEqual({ lit: 0, cleared: 0, words: 0, bonus: 0, points: 0, spotlights: 0 });
     });
 
     it('sets each dimmer from the share of the List words through the square that are found', () => {
@@ -137,19 +139,47 @@ describe('scoring', () => {
         expect(dimmerLevels([cart, found('rate', [2, 8, 14, 20])], PUZZLE)[2]).toBe(5);
     });
 
-    it('gives hints: the List words still missing through each square, and starting on it', () => {
-        const { through, starts } = hintCounts([found('cart', [0, 1, 2, 3])], PUZZLE);
-        expect(through[2]).toBe(1);
-        expect(through[0]).toBe(0);
-        expect(starts[2]).toBe(1);
-        expect(starts[0]).toBe(0);
+    it('takes meter readings only from bonus words', () => {
+        const cart = found('cart', [0, 1, 2, 3]);
+        const carat = found('carat', [0, 1, 2, 8, 14]);
+        expect(readSquares([cart], PUZZLE).size).toBe(0);
+        expect(readSquares([carat], PUZZLE)).toEqual(new Set([0, 1, 2, 3, 8, 14]));
     });
 
+    it('shows the List words still missing through each square with a reading, and starting on it', () => {
+        // Without a reading, there are no numbers, even with "rate" still missing
+        const before = meterReadings([found('cart', [0, 1, 2, 3])], PUZZLE);
+        expect(before.through.every((n) => n === 0)).toBe(true);
+        const { through, starts } = meterReadings(
+            [found('cart', [0, 1, 2, 3]), found('carat', [0, 1, 2, 8, 14])],
+            PUZZLE,
+        );
+        expect(through[2]).toBe(1); // "rate" goes through the r, which has a reading
+        expect(starts[2]).toBe(1);
+        expect(through[0]).toBe(0); // "cart" is found, so nothing is missing here
+        expect(through[20]).toBe(0); // "rate" goes through the e too, but it has no reading
+    });
+
+    it('counts a square as cleared when every List word through it is found', () => {
+        const cart = found('cart', [0, 1, 2, 3]);
+        expect(summarize([cart], PUZZLE).cleared).toBe(3); // squares 0, 1 and 3; "rate" still goes through square 2
+        expect(summarize([cart, found('rate', [2, 8, 14, 20])], PUZZLE).cleared).toBe(7);
+        expect(summarize([found('carat', [0, 1, 2, 8, 14])], PUZZLE).cleared).toBe(0);
+    });
+
+    it('gives a clue for a square: the length and start of a missing List word through it', () => {
+        const cart = found('cart', [0, 1, 2, 3]);
+        expect(squareClue([], PUZZLE, 0)).toEqual({ length: 4, start: 'ca' });
+        expect(squareClue([cart], PUZZLE, 2)).toEqual({ length: 4, start: 'ra' });
+        expect(squareClue([cart], PUZZLE, 0)).toBeNull();
+    });
+
+    // Changed: the points for each rank were lowered after real play showed the first set was too hard
     it('ranks by the fraction of the List points found', () => {
         expect(rankIndexFor(0, 100)).toBe(0);
         expect(rankIndexFor(1, 100)).toBe(1);
-        expect(rankIndexFor(30, 100)).toBe(4);
-        expect(rankIndexFor(40, 100)).toBe(5);
+        expect(rankIndexFor(23, 100)).toBe(4);
+        expect(rankIndexFor(30, 100)).toBe(5);
         expect(rankIndexFor(99, 100)).toBe(8);
         expect(rankIndexFor(100, 100)).toBe(9);
     });
@@ -161,7 +191,7 @@ describe('scoring', () => {
             found('rate', [2, 8, 14, 20]),
             found('carat', [0, 1, 2, 8, 14]),
         ];
-        expect(summarize(have, PUZZLE)).toEqual({ lit: 7, words: 2, bonus: 1, points: 2, spotlights: 0 });
+        expect(summarize(have, PUZZLE)).toEqual({ lit: 7, cleared: 7, words: 2, bonus: 1, points: 2, spotlights: 0 });
         expect(listPoints(PUZZLE)).toBe(2);
     });
 

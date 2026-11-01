@@ -74,8 +74,8 @@ describe('Lantern Grid family play', () => {
         expect(rows).toHaveLength(2);
         // Changed: Compare now shows each player's rank and the List words only they found (one each here), rather than
         // squares lit and the longest word
-        expect(rows[0]).toContain('Me (you)Up to Code111');
-        expect(rows[1]).toContain('MomUp to Code111');
+        expect(rows[0]).toContain('Me (you)High Bay111');
+        expect(rows[1]).toContain('MomHigh Bay111');
         closeModal();
     });
 

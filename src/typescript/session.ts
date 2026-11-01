@@ -33,8 +33,8 @@ export const session = {
     mine: null as unknown as PlayerDay,
     /** The squares being traced */
     path: [] as number[],
-    /** Whether the hint numbers are showing */
-    hintsShown: false,
+    /** Whether tapping a square asks for a clue (the bulb is on) */
+    clueMode: false,
     /** The light/dark choice */
     theme: 'auto' as Theme,
     /** Who is signed in to Firebase (family play), once known */

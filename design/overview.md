@@ -30,7 +30,7 @@ first game, Buzz Off. All four share families. The brief for all three was:
 
 - **Built and passing:** the whole game works: local play, family play (compare, combine), invites, sign-in, ranks,
   hints, Yesterday's Answers, help, menu, dark mode, offline, and installing it as an app. `npm run lint`, `npm test`
-  (58 tests) and `npm run build` all pass.
+  (61 tests) and `npm run build` all pass.
 - **Not yet tried for real:** it has been tested only in Jest (jsdom, including whole-game tests that trace words with
   pointer events, and family play against a fake Firebase). It has not been run on a real phone, in a real browser, or
   against the real Firebase database.

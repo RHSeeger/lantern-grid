@@ -6,8 +6,8 @@ import type { TraceResult } from '../types/TraceResult';
 import { spell } from './grid';
 
 /**
- * The rules of play: checking a traced path, scoring words, which squares are lit and how brightly, hints, ranks, and
- * summing up a player's (or the family's) day.
+ * The rules of play: checking a traced path, scoring words, which squares are lit and how brightly, meter readings,
+ * clues, ranks, and summing up a player's (or the family's) day.
  */
 
 /**
@@ -85,22 +85,67 @@ export function dimmerLevels(found: FoundPath[], puzzle: Puzzle): number[] {
 }
 
 /**
- * Works out the hint numbers: for each square, how many List words not yet found go through it, and start on it.
+ * Works out which squares have a meter reading: every square a found bonus word can go through.
+ *
+ * @param found - The words found
+ * @param puzzle - The puzzle
+ * @returns The squares with a reading
+ */
+export function readSquares(found: FoundPath[], puzzle: Puzzle): Set<number> {
+    const bonus = acceptedWords(found, puzzle).filter((w) => !puzzle.list.includes(w));
+    return new Set(bonus.flatMap((w) => [...(puzzle.answerSquares.get(w) ?? [])]));
+}
+
+/**
+ * Works out the meter readings: for each square with a reading, how many List words not yet found go through it, and
+ * start on it. Squares without a reading show 0, as do squares with none left.
  *
  * @param found - The words found
  * @param puzzle - The puzzle
  * @returns The numbers for each square
  */
-export function hintCounts(found: FoundPath[], puzzle: Puzzle): { through: number[]; starts: number[] } {
+export function meterReadings(found: FoundPath[], puzzle: Puzzle): { through: number[]; starts: number[] } {
     const have = new Set(found.map((f) => f.w));
+    const read = readSquares(found, puzzle);
     const through = new Array<number>(puzzle.letters.length).fill(0);
     const starts = new Array<number>(puzzle.letters.length).fill(0);
     for (const w of puzzle.list) {
         if (have.has(w)) continue;
-        for (const sq of puzzle.answerSquares.get(w) ?? []) through[sq]++;
-        for (const sq of puzzle.answerStarts.get(w) ?? []) starts[sq]++;
+        for (const sq of puzzle.answerSquares.get(w) ?? []) if (read.has(sq)) through[sq]++;
+        for (const sq of puzzle.answerStarts.get(w) ?? []) if (read.has(sq)) starts[sq]++;
     }
     return { through, starts };
+}
+
+/**
+ * Works out how many squares are cleared: squares with List words through them, all of which are found.
+ *
+ * @param found - The words found
+ * @param puzzle - The puzzle
+ * @returns How many are cleared
+ */
+export function clearedCount(found: FoundPath[], puzzle: Puzzle): number {
+    return dimmerLevels(found, puzzle).filter((level) => level === DIMMER_FULL).length;
+}
+
+/**
+ * Finds a clue for a square: the shortest List word not yet found through it (the first alphabetically among equals).
+ *
+ * @param found - The words found
+ * @param puzzle - The puzzle
+ * @param square - The square
+ * @returns The word's length and first two letters, or null if the square has no words left
+ */
+export function squareClue(
+    found: FoundPath[],
+    puzzle: Puzzle,
+    square: number,
+): { length: number; start: string } | null {
+    const have = new Set(found.map((f) => f.w));
+    const [word] = puzzle.list
+        .filter((w) => !have.has(w) && puzzle.answerSquares.get(w)?.has(square))
+        .sort((a, b) => a.length - b.length || (a < b ? -1 : 1));
+    return word ? { length: word.length, start: word.slice(0, 2) } : null;
 }
 
 /**
@@ -141,7 +186,7 @@ export function rankIndexFor(points: number, total: number): number {
 }
 
 /**
- * Sums up some found words: squares lit, List words, bonus words, points, and Spotlights.
+ * Sums up some found words: squares lit and cleared, List words, bonus words, points, and Spotlights.
  *
  * @param found - The words found (one player's, or everyone's together)
  * @param puzzle - The puzzle
@@ -150,11 +195,12 @@ export function rankIndexFor(points: number, total: number): number {
 export function summarize(
     found: FoundPath[],
     puzzle: Puzzle,
-): { lit: number; words: number; bonus: number; points: number; spotlights: number } {
+): { lit: number; cleared: number; words: number; bonus: number; points: number; spotlights: number } {
     const words = acceptedWords(found, puzzle);
     const listed = words.filter((w) => puzzle.list.includes(w));
     return {
         lit: litSquares(found, puzzle).size,
+        cleared: clearedCount(found, puzzle),
         words: listed.length,
         bonus: words.length - listed.length,
         points: listed.reduce((sum, w) => sum + wordPoints(w), 0),

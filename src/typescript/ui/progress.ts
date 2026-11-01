@@ -34,11 +34,13 @@ export function renderProgress(el: HTMLElement, points: number, total: number, t
 }
 
 /**
- * Draws the line under the progress line: the day's Spotlights (a star for each, filled once found), and squares lit.
+ * Draws the line under the progress line: the day's Spotlights (a star for each, filled once found), and squares
+ * cleared and lit.
  *
  * @param el - The element to draw it in
  * @param spotlightsFound - How many Spotlights are found
  * @param spotlights - How many Spotlights the grid has
+ * @param cleared - How many squares are cleared
  * @param lit - How many squares are lit
  * @param squares - How many squares the grid has
  */
@@ -46,6 +48,7 @@ export function renderLights(
     el: HTMLElement,
     spotlightsFound: number,
     spotlights: number,
+    cleared: number,
     lit: number,
     squares: number,
 ): void {
@@ -57,7 +60,7 @@ export function renderLights(
             h('span', { class: 'lights-stars', 'aria-hidden': 'true' }, stars),
             ' Spotlights',
         ),
-        h('span', {}, `${lit}/${squares} lit`),
+        h('span', {}, `${cleared}/${squares} cleared · ${lit}/${squares} lit`),
     );
 }
 

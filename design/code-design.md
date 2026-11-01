@@ -21,7 +21,7 @@ src/
     gamelogic/        Rules and calculations, with no DOM (except storage.ts):
       grid.ts             Which squares touch; path keys (one base-36 character per square)
       solver.ts           Loading the word list; finding every word in a grid
-      play.ts             Checking a traced word, points, lit squares, dimmers, hints, ranks, summaries, combining players
+      play.ts             Checking a traced word, points, lit squares, dimmers, meter readings, clues, ranks, summaries, combining players
       day.ts              The puzzle list; a player's day (local storage and Firebase's form)
       dates.ts, prng.ts, storage.ts, invites.ts, personal.ts   Shared with the other games (see below)
     family/           Everything that talks to Firebase (loaded with import() only when family play is used):
@@ -73,7 +73,8 @@ What differs is in `data/app.ts` (the name, storage prefix, Firebase key, ...), 
 - Everything is **plain data** that survives JSON, apart from the `Puzzle`, which is rebuilt from the day each time
   (never saved): its answers are found by searching the grid with the word list.
 - Saved in localStorage, all prefixed `lantern:` (the games share a web address, so each has its own prefix):
-    - `day:<YYYY-MM-DD>` - a `PlayerDay`: the words traced (with their paths and times), and whether hints were used
+    - `day:<YYYY-MM-DD>` - a `PlayerDay`: the words traced (with their paths and times), and whether clues were used
+      (saved as `hints`, the name the database rules know)
     - `theme`, `mode` (who the player is playing with), `profile` (the name and color last used in a family),
       `inviteCodes` (for rejoining after signing in), `combined` (for each family, the day the player combined)
 - Values that can be worked out (lit squares, points, rank) are **not** stored.

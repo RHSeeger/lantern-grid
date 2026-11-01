@@ -20,8 +20,8 @@ touching square, and checking the letters so far against the word list:
 - Because the list is in alphabetical order, the game can quickly check whether any word starts with those letters.
   If none does, that path is abandoned straight away.
 - Every path that spells a whole word of 4 or more letters is an answer.
-- For each answer, the game remembers which squares it can go through and start on. That's what the dimmers and the hint
-  numbers count.
+- For each answer, the game remembers which squares it can go through and start on. That's what the dimmers and the meter
+  readings count.
 - The answers that are everyday words are the grid's **List**, the words that count for rank. The rest are bonus words.
 
 How long this takes on older phones hasn't been measured yet (see `overview.md`, The Plan).
@@ -53,13 +53,16 @@ The lit squares, dimmers, points and rank are always worked out again from the w
 Words score points by length, but only List words count. **Rank** is the share of the List's points found.
 
 Each square's **dimmer** is the share of the List words through it that are found, in five steps. A square at full, with
-all its List words found, glows. So a dim square shows where words are still hiding. A bonus word can light a dark
-square, but only to the lowest step.
+all its List words found, glows and counts as cleared. So a dim square shows where words are still hiding. A bonus word
+can light a dark square, but only to the lowest step.
+
+A bonus word also takes a **meter reading** on every square it can go through: from then on, that square shows how many
+List words not yet found go through it and start on it. So bonus words score nothing, but are clues to the real words.
 
 **Spotlights** are the List's longest words, of 7 letters or more, up to three a day.
 
-**Hints** show, on each square, how many List words not yet found go through it and start on it. Using them is recorded
-for the day, and the family can see it.
+**Clues** are for when a player is stuck. With the bulb on, tapping a square shows the length and first two letters of the
+shortest List word not yet found through it. Using them is recorded for the day, and the family can see it.
 
 ## Working offline
 
@@ -77,7 +80,7 @@ in the family can read everyone's, and every change arrives straight away.
 
 Every player starts out seeing only their own board. **Combine our work** puts everyone's words on the board together:
 
-- The dimmers rise with everyone's words.
+- The dimmers rise with everyone's words, and everyone's bonus words take readings.
 - Each square shows a dot for everyone who lit it.
 - Each word shows a dot for whoever found it first.
 - Compare adds a "Together" row with the family's totals.

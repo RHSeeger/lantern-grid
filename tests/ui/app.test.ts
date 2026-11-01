@@ -65,17 +65,35 @@ describe('Lantern Grid', () => {
         expect(saved && localStorage.getItem(saved)).toContain('"w":"cart"');
     });
 
-    it('shows hints: the missing List words through each square, and starting on it', () => {
+    it('accepts a bonus word without points, and it takes meter readings on its squares', () => {
+        const squares = document.querySelectorAll('.sq');
+        // No numbers yet, though "rate" is still missing
+        expect([...document.querySelectorAll('.sq-hint')].every((el) => el.textContent === '')).toBe(true);
+        [0, 1, 2, 8, 14, 14].forEach(tap);
+        expect(document.getElementById('message')?.textContent).toBe('Bonus word! 6 new readings');
+        expect(document.querySelector('.wordbox-count')?.textContent).toBe('1 of 2 words +1 bonus');
+        expect(document.getElementById('progress')?.textContent).toContain('1/2');
+        // "rate" is still missing, and starts on the r, which has a reading now
+        expect(squares[2].querySelector('.sq-hint')?.textContent).toBe('1');
+        expect(squares[2].querySelector('.sq-start')?.textContent).toBe('▸1');
+        // "rate" also goes through the e, which has no reading
+        expect(squares[20].querySelector('.sq-hint')?.textContent).toBe('');
+    });
+
+    it('shows a clue when a square is tapped with the bulb on, and records it', () => {
         window.confirm = jest.fn(() => true);
-        const hints = document.getElementById('btn-hints') as HTMLElement;
-        hints.click();
-        // "rate" is still missing, and starts on the r
-        const r = document.querySelectorAll('.sq')[2];
-        expect(r.querySelector('.sq-hint')?.textContent).toBe('1');
-        expect(r.querySelector('.sq-start')?.textContent).toBe('▸1');
-        expect(document.querySelectorAll('.sq')[0].querySelector('.sq-hint')?.textContent).toBe('');
-        hints.click();
-        expect(r.querySelector('.sq-hint')?.textContent).toBe('');
+        const bulb = document.getElementById('btn-hints') as HTMLElement;
+        bulb.click();
+        expect(bulb.classList.contains('active')).toBe(true);
+        tap(14);
+        expect(document.getElementById('toasts')?.textContent).toContain('A 4-letter word through here starts RA.');
+        expect(document.getElementById('word-text')?.textContent).toBe('');
+        const saved = Object.keys(localStorage).find((k) => k.startsWith('lantern:day:'));
+        expect(saved && localStorage.getItem(saved)).toContain('"hints":true');
+        bulb.click();
+        tap(2);
+        expect(document.getElementById('word-text')?.textContent).toBe('R');
+        tap(2); // tapping it again clears it, since one letter can't be a word
     });
 
     it('traces a word by dragging, and submits it on letting go', () => {
@@ -90,7 +108,8 @@ describe('Lantern Grid', () => {
         expect(document.getElementById('word-text')?.textContent).toBe('RATE');
         grid.dispatchEvent(new MouseEvent('pointerup', at(20)));
         expect(document.querySelectorAll('.sq.lit')).toHaveLength(7);
-        expect(document.querySelector('.wordbox-count')?.textContent).toBe('2 of 2 words');
+        expect(document.querySelector('.wordbox-count')?.textContent).toBe('2 of 2 words +1 bonus');
+        expect(document.getElementById('lights')?.textContent).toContain('7/36 cleared · 7/36 lit');
     });
 
     it('rejects a word already found', () => {
@@ -102,12 +121,5 @@ describe('Lantern Grid', () => {
     it('brings a square to full only when every List word through it is found', () => {
         expect(document.querySelectorAll('.sq.dim-5')).toHaveLength(7);
         expect(document.getElementById('progress')?.textContent).toContain('Full Output');
-    });
-
-    it('accepts a bonus word, without points', () => {
-        [0, 1, 2, 8, 14, 14].forEach(tap);
-        expect(document.getElementById('message')?.textContent).toBe('Bonus word!');
-        expect(document.querySelector('.wordbox-count')?.textContent).toBe('2 of 2 words +1 bonus');
-        expect(document.getElementById('progress')?.textContent).toContain('2/2');
     });
 });

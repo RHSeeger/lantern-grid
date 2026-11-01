@@ -654,6 +654,7 @@ body.connecting .play { justify-content: flex-start; }
   font-size: 0.8125rem; color: var(--ink-2);
 }
 .lights-stars, .spotlight-star { color: var(--lit-5); }
+#btn-hints.active { background: var(--lit-3); color: var(--lit-ink); border-radius: 50%; }
 .bonus-word { color: var(--muted); font-style: italic; }
 .sq-owners { position: absolute; bottom: 4px; left: 0; right: 0; display: flex; justify-content: center; gap: 2px; }
 .sq-owners .player-dot { width: 6px; height: 6px; box-shadow: 0 0 0 1px var(--surface); }

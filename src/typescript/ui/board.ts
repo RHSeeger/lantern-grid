@@ -17,12 +17,18 @@ const DRAG_RADIUS = 0.42;
  * Makes the board.
  *
  * @param root - The element to draw it in
- * @param options - What happens as the path changes, and when it is submitted
+ * @param options - What happens as the path changes and when it is submitted; and, while asking for clues (when a tap
+ * asks for a clue instead of tracing; dragging still traces), what a tap on a square does
  * @returns Functions to set the letters and draw the board
  */
 export function createBoard(
     root: HTMLElement,
-    options: { onPathChange: (path: number[]) => void; onSubmit: (path: number[]) => void },
+    options: {
+        onPathChange: (path: number[]) => void;
+        onSubmit: (path: number[]) => void;
+        clueMode: () => boolean;
+        onClue: (square: number) => void;
+    },
 ): { setLetters: (letters: string[]) => void; render: (view: BoardView) => void } {
     const n = SIZE * SIZE;
     const squares = Array.from({ length: n }, (_, i) =>
@@ -127,7 +133,8 @@ export function createBoard(
             const traced = path;
             setPath([]);
             options.onSubmit(traced);
-        } else tap(p.start, p.before);
+        } else if (options.clueMode()) options.onClue(p.start);
+        else tap(p.start, p.before);
     };
     grid.addEventListener('pointerup', (e) => release(e, false));
     grid.addEventListener('pointercancel', (e) => release(e, true));
@@ -151,9 +158,9 @@ export function createBoard(
                 const state = level === DIMMER_FULL ? ', at full' : level ? ', lit' : '';
                 el.setAttribute('aria-label', `${(letters[i] ?? '').toUpperCase()}${state}`);
                 const hint = el.children[1] as HTMLElement;
-                hint.textContent = view.hints?.[i] ? String(view.hints[i]) : '';
+                hint.textContent = view.through[i] ? String(view.through[i]) : '';
                 const start = el.children[2] as HTMLElement;
-                start.textContent = view.starts?.[i] ? `▸${view.starts[i]}` : '';
+                start.textContent = view.starts[i] ? `▸${view.starts[i]}` : '';
                 const owners = el.children[3] as HTMLElement;
                 owners.replaceChildren(
                     ...(view.owners?.[i] ?? []).map((c) => h('span', { class: `player-dot player-${c}` })),
