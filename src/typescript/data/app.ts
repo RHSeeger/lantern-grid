@@ -38,6 +38,12 @@ export const SPOTLIGHT_MAX = 3;
 /** The highest dimmer level: a square with every List word through it found */
 export const DIMMER_FULL = 5;
 
+/** How many of a player's bonus words earn one clue */
+export const BONUS_PER_CLUE = 2;
+
+/** The word lengths with their own column in the fixture schedule; the last also takes every longer word */
+export const SCHEDULE_LENGTHS = [4, 5, 6, 7];
+
 /** The files the service worker keeps for offline play */
 export const OFFLINE_FILES = [
     'data/words.txt',

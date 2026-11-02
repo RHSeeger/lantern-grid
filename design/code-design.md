@@ -75,6 +75,9 @@ What differs is in `data/app.ts` (the name, storage prefix, Firebase key, ...), 
 - Saved in localStorage, all prefixed `lantern:` (the games share a web address, so each has its own prefix):
     - `day:<YYYY-MM-DD>` - a `PlayerDay`: the words traced (with their paths and times), and whether clues were used
       (saved as `hints`, the name the database rules know)
+    - `clues:<local or family id>:<YYYY-MM-DD>` - the words the player has paid for a clue about. It's on the device even
+      in family play, until the database rules allow it (see `todo.md`). Clues earned aren't stored: they come from the
+      bonus words found
     - `theme`, `mode` (who the player is playing with), `profile` (the name and color last used in a family),
       `inviteCodes` (for rejoining after signing in), `combined` (for each family, the day the player combined)
 - Values that can be worked out (lit squares, points, rank) are **not** stored.

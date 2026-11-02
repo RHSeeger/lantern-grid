@@ -35,6 +35,8 @@ export const session = {
     path: [] as number[],
     /** Whether tapping a square asks for a clue (the bulb is on) */
     clueMode: false,
+    /** The words the player has paid for a clue about today */
+    paidClues: [] as string[],
     /** The light/dark choice */
     theme: 'auto' as Theme,
     /** Who is signed in to Firebase (family play), once known */

@@ -59,8 +59,16 @@ export function showHelp(): void {
             h(
                 'p',
                 {},
-                'Stuck? Turn on the bulb and tap a square, to see how long one of its missing words is and how it starts. ',
-                'Turn the bulb off to tap letters again. Dragging always traces a word.',
+                'The bulb fills up as you find bonus words, and every 2 of them earn a clue: the number on the bulb is how ',
+                'many you have ready. Tap the bulb, then a square, to see how long one of its missing words is and how it ',
+                'starts. Seeing the same clue again is free. Dragging always traces a word.',
+            ),
+            h('h3', {}, 'Fixture Schedule'),
+            h(
+                'p',
+                {},
+                'The table button shows how many List words you’re still missing, by first letter and length, along with ',
+                'your clues. It’s free, as often as you like.',
             ),
             h('h3', {}, 'Play with your family'),
             h(

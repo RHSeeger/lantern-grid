@@ -1,8 +1,11 @@
 import { pathKey } from '../../src/typescript/gamelogic/grid';
 import {
     checkTrace,
+    clueCharge,
+    clueText,
     combineFound,
     dimmerLevels,
+    fixtureSchedule,
     listPoints,
     litSquares,
     meterReadings,
@@ -167,11 +170,34 @@ describe('scoring', () => {
         expect(summarize([found('carat', [0, 1, 2, 8, 14])], PUZZLE).cleared).toBe(0);
     });
 
-    it('gives a clue for a square: the length and start of a missing List word through it', () => {
+    // Changed: squareClue returned the length and start; it now returns the word, since clues are paid for per word
+    it('finds the word a clue for a square is about: a missing List word through it', () => {
         const cart = found('cart', [0, 1, 2, 3]);
-        expect(squareClue([], PUZZLE, 0)).toEqual({ length: 4, start: 'ca' });
-        expect(squareClue([cart], PUZZLE, 2)).toEqual({ length: 4, start: 'ra' });
+        expect(squareClue([], PUZZLE, 0)).toBe('cart');
+        expect(squareClue([cart], PUZZLE, 2)).toBe('rate');
         expect(squareClue([cart], PUZZLE, 0)).toBeNull();
+        expect(clueText('rate')).toBe('4 letters, starts RA');
+    });
+
+    it('earns a clue for every 2 bonus words, less the clues paid for', () => {
+        const carat = found('carat', [0, 1, 2, 8, 14]);
+        const cart = found('cart', [0, 1, 2, 3]);
+        const tart = found('tart', [14, 8, 2, 3]);
+        const puzzle = solveGrid(LETTERS, parseWordlist('carat\ncart\nrate\ntart'), EVERYDAY);
+        expect(clueCharge([cart], puzzle, 0)).toEqual({ ready: 0, progress: 0 });
+        expect(clueCharge([carat], puzzle, 0)).toEqual({ ready: 0, progress: 1 });
+        expect(clueCharge([carat, tart], puzzle, 0)).toEqual({ ready: 1, progress: 0 });
+        expect(clueCharge([carat, tart], puzzle, 1)).toEqual({ ready: 0, progress: 0 });
+    });
+
+    it('counts the List words left by first letter and length, with long words together', () => {
+        const puzzle = { ...PUZZLE, list: ['cart', 'carpets', 'cartoons', 'rate', 'rates'] };
+        expect(fixtureSchedule([], puzzle)).toEqual([
+            { letter: 'c', counts: [1, 0, 0, 2] },
+            { letter: 'r', counts: [1, 1, 0, 0] },
+        ]);
+        const left = fixtureSchedule([found('rate', [2, 8, 14, 20]), found('rates', [2, 8, 14, 20, 26])], puzzle);
+        expect(left).toEqual([{ letter: 'c', counts: [1, 0, 0, 2] }]);
     });
 
     // Changed: the points for each rank were lowered after real play showed the first set was too hard

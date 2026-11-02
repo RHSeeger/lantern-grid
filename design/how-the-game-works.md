@@ -61,8 +61,14 @@ List words not yet found go through it and start on it. So bonus words score not
 
 **Spotlights** are the List's longest words, of 7 letters or more, up to three a day.
 
-**Clues** are for when a player is stuck. With the bulb on, tapping a square shows the length and first two letters of the
-shortest List word not yet found through it. Using them is recorded for the day, and the family can see it.
+**Clues** are for when a player is stuck, and have to be earned: every 2 of the player's bonus words earn one, which the
+bulb shows by filling up and counting. Tap the bulb, then a square, to see the length and first two letters of the
+shortest List word not yet found through it. That costs one clue, once per word: seeing the same clue again is free. The
+game works out clues earned from the words found, and saves the clues spent on the device, even in family play for now.
+Whether clues were used is saved with the day, and the family can see it.
+
+The **Fixture Schedule** is a table of the List words still missing, by first letter and length. It's worked out from the
+words found, so it isn't saved, and it's free to look at.
 
 ## Working offline
 

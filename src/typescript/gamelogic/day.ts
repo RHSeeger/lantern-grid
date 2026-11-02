@@ -99,3 +99,26 @@ export function loadDay(key: string): PlayerDay {
 export function saveDay(day: PlayerDay): void {
     setJSON(`day:${day.day}`, day);
 }
+
+/**
+ * Loads the words the player has paid for a clue about. These are kept on the device, even in family play.
+ *
+ * @param owner - Whose play it is: 'local', or the family's id
+ * @param key - The day key
+ * @returns The words
+ */
+export function loadPaidClues(owner: string, key: string): string[] {
+    const saved = getJSON<unknown>(`clues:${owner}:${key}`, []);
+    return Array.isArray(saved) ? saved.filter((w): w is string => typeof w === 'string') : [];
+}
+
+/**
+ * Saves the words the player has paid for a clue about.
+ *
+ * @param owner - Whose play it is: 'local', or the family's id
+ * @param key - The day key
+ * @param words - The words
+ */
+export function savePaidClues(owner: string, key: string, words: string[]): void {
+    setJSON(`clues:${owner}:${key}`, words);
+}

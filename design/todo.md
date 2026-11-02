@@ -24,6 +24,16 @@ Known work that still needs doing. Remove items when they are done. `overview.md
   ordinary ones miss it (`defer`). `tools/blocklist.txt` removes a word entirely; a way to move a word on or off the List
   (a small list of overrides, read when building `everyday-words.txt`) would let the family fix these as they find them.
   Rebuilding would change the grids, so it may be better to apply overrides without re-choosing them.
+- **Charged clues**: check that one clue per 2 bonus words (`BONUS_PER_CLUE`) feels right, and that the Fixture Schedule
+  helps enough. The schedule could also count words by their first two letters, as Spelling Bee's hints do. The schedule's
+  name is one for the user's wife to check too.
+- **Save spent clues in the database, once charged clues are settled.** They're only on the device for now
+  (`clues:<owner>:<day>`), so another phone starts with them unspent, and Compare can show only that a player used clues
+  (`hints`), not how many. To fix that, once the user agrees:
+    - Add `"clues": { "$word": { ".validate": "$word.matches(/^[a-z]{4,16}$/) && newData.isNumber()" } }` to the `lantern`
+      section of `database.rules.json`, and copy the file to Quilt, Ladder Garden and Buzz Off.
+    - The user publishes it in the Firebase console; then run `npm run check:rules`.
+    - Save and read `clues` with the day, and make Compare's Clues column a count.
 - **Rank names**: the ranks are named from industrial lighting and its codes. Ask the user's wife to check or rename them
   (`data/ranks.ts`).
 - **Meter readings** on the smallest phones: check the two numbers fit beside the letter.

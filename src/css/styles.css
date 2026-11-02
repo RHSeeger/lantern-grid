@@ -654,7 +654,36 @@ body.connecting .play { justify-content: flex-start; }
   font-size: 0.8125rem; color: var(--ink-2);
 }
 .lights-stars, .spotlight-star { color: var(--lit-5); }
+#btn-hints { position: relative; }
 #btn-hints.active { background: var(--lit-3); color: var(--lit-ink); border-radius: 50%; }
+.clue-fill { fill: var(--lit-4); }
+.clue-count {
+  position: absolute; top: 1px; right: 1px;
+  min-width: 15px; height: 15px; padding: 0 3px;
+  border-radius: 8px;
+  background: var(--lit-5); color: var(--lit-ink);
+  font-size: 0.6875rem; font-weight: 700; line-height: 15px; text-align: center;
+}
+.clue-count:empty { display: none; }
+.schedule { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.schedule th, .schedule td { padding: 5px 6px; text-align: center; border-bottom: 1px solid var(--line); }
+.schedule tbody th, .schedule tfoot th { text-align: left; }
+.schedule tfoot th, .schedule tfoot td { border-bottom: none; font-weight: 700; }
+.schedule-clues { margin: 0; padding-left: 20px; }
+/* Six toolbar buttons have to fit beside the title on a phone */
+@media (max-width: 460px) {
+  .tools { gap: 0; }
+  .tools .icon-btn { width: 36px; height: 36px; }
+}
+@media (max-width: 380px) {
+  .brand h1 { font-size: 1.0625rem; }
+  .topbar { padding-left: 10px; padding-right: 4px; }
+}
+@media (max-width: 340px) {
+  .brand h1 { font-size: 1rem; }
+  .tools .icon-btn { width: 32px; height: 32px; }
+  .tools .icon-btn svg { width: 22px; height: 22px; }
+}
 .bonus-word { color: var(--muted); font-style: italic; }
 .sq-owners { position: absolute; bottom: 4px; left: 0; right: 0; display: flex; justify-content: center; gap: 2px; }
 .sq-owners .player-dot { width: 6px; height: 6px; box-shadow: 0 0 0 1px var(--surface); }

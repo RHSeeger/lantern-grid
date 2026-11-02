@@ -1,4 +1,4 @@
-import { DIMMER_FULL, MIN_WORD_LENGTH } from '../data/app';
+import { BONUS_PER_CLUE, DIMMER_FULL, MIN_WORD_LENGTH, SCHEDULE_LENGTHS } from '../data/app';
 import { RANKS } from '../data/ranks';
 import type { FoundPath } from '../types/FoundPath';
 import type { Puzzle } from '../types/Puzzle';
@@ -129,23 +129,67 @@ export function clearedCount(found: FoundPath[], puzzle: Puzzle): number {
 }
 
 /**
- * Finds a clue for a square: the shortest List word not yet found through it (the first alphabetically among equals).
+ * Finds the word a square's clue is about: the shortest List word not yet found through it (the first alphabetically
+ * among equals).
  *
  * @param found - The words found
  * @param puzzle - The puzzle
  * @param square - The square
- * @returns The word's length and first two letters, or null if the square has no words left
+ * @returns The word, or null if the square has no words left
  */
-export function squareClue(
-    found: FoundPath[],
-    puzzle: Puzzle,
-    square: number,
-): { length: number; start: string } | null {
+export function squareClue(found: FoundPath[], puzzle: Puzzle, square: number): string | null {
     const have = new Set(found.map((f) => f.w));
     const [word] = puzzle.list
         .filter((w) => !have.has(w) && puzzle.answerSquares.get(w)?.has(square))
         .sort((a, b) => a.length - b.length || (a < b ? -1 : 1));
-    return word ? { length: word.length, start: word.slice(0, 2) } : null;
+    return word ?? null;
+}
+
+/**
+ * Describes a clue: the word's length and first two letters.
+ *
+ * @param word - The word
+ * @returns The description
+ */
+export function clueText(word: string): string {
+    return `${word.length} letters, starts ${word.slice(0, 2).toUpperCase()}`;
+}
+
+/**
+ * Works out a player's clue charge: one clue is earned for every BONUS_PER_CLUE of their bonus words.
+ *
+ * @param found - The player's own words found
+ * @param puzzle - The puzzle
+ * @param spent - How many clues they have paid for
+ * @returns How many clues are ready, and how many bonus words count towards the next
+ */
+export function clueCharge(found: FoundPath[], puzzle: Puzzle, spent: number): { ready: number; progress: number } {
+    const { bonus } = summarize(found, puzzle);
+    return {
+        ready: Math.max(0, Math.floor(bonus / BONUS_PER_CLUE) - spent),
+        progress: bonus % BONUS_PER_CLUE,
+    };
+}
+
+/**
+ * Works out the fixture schedule: the List words not yet found, counted by first letter and length.
+ *
+ * @param found - The words found
+ * @param puzzle - The puzzle
+ * @returns A row for each first letter with words left, in order; each row's counts line up with SCHEDULE_LENGTHS
+ */
+export function fixtureSchedule(found: FoundPath[], puzzle: Puzzle): { letter: string; counts: number[] }[] {
+    const have = new Set(found.map((f) => f.w));
+    const rows = new Map<string, number[]>();
+    for (const w of puzzle.list) {
+        if (have.has(w)) continue;
+        const counts = rows.get(w[0]) ?? SCHEDULE_LENGTHS.map(() => 0);
+        const longest = SCHEDULE_LENGTHS.length - 1;
+        const column = SCHEDULE_LENGTHS.findIndex((n) => n === w.length);
+        counts[column < 0 ? longest : column]++;
+        rows.set(w[0], counts);
+    }
+    return [...rows.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([letter, counts]) => ({ letter, counts }));
 }
 
 /**

@@ -34,16 +34,22 @@
 - Drag through the letters and let go to submit; or tap letters one at a time (tapping a letter in the path goes back
   to it) and tap the last again, or press Enter. While dragging, only the middle of each square counts, so diagonal
   moves don't pick up the squares beside the way.
-- **Clues** (the bulb): with it on, tapping a square shows the length and first two letters of one missing List word
-  through it (the shortest); dragging still traces. It works on any square, including the few no bonus word reaches. Asks
-  first; the family can see who used clues. Meter readings don't count as using clues, because they're earned.
+- **Clues** (the bulb): every 2 of a player's own bonus words earn a clue, also when combined. The bulb fills as they're
+  found, and shows how many clues are ready. Tap it, then a square, to see the length and first two letters of the square's
+  shortest missing List word. It works on any square, including the few no bonus word reaches. A clue is paid for once per
+  word: tapping any square whose current clue is that word again is free. The bulb turns off after each clue, so a stray
+  tap can't spend another. The family can see who used clues (not yet how many). Spent clues are saved only on the device
+  for now, so another device starts with them unspent (see `todo.md`). Meter readings don't count as using clues.
+- **Fixture Schedule** (the table button): a table of the List words still missing, by first letter and length (4, 5, 6,
+  7+), with totals, and the player's clues not yet solved. It's free and isn't recorded. Combined, it counts what the
+  family is still missing. It has its own button so that it doesn't show every time the found words are opened.
 - The found-words box shows how many of the List's words are found (and any bonus words), and opens to the list, with
   stars on the Spotlights.
 
 ## Screens
 
-- **Welcome** (every visit), **Rankings** (tap the progress bar), **Yesterday's Answers** (the grid, what was lit, and
-  the List), **Compare** (family play), **How to Play**, **Menu** (theme, about with the GitHub link, erase local
+- **Welcome** (every visit), **Rankings** (tap the progress bar), **Fixture Schedule**, **Yesterday's Answers** (the grid,
+  what was lit, and the List), **Compare** (family play), **How to Play**, **Menu** (theme, about with the GitHub link, erase local
   progress), and the family screens (shared with the other games).
 
 ## Family Play

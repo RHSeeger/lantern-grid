@@ -1,4 +1,4 @@
-import { APP_NAME, SIZE } from './data/app';
+import { APP_NAME, BONUS_PER_CLUE, SIZE } from './data/app';
 import { FAMILY_PLAY_AVAILABLE } from './data/firebaseConfig';
 import { LOGO_SVG } from './data/logo';
 import { RANKS } from './data/ranks';
@@ -15,11 +15,22 @@ import {
     switchToLocal,
 } from './familyController';
 import { addDays, dayKey, formatLongDate } from './gamelogic/dates';
-import { lettersForDay, loadDay, newDay, parsePlayerDay, parsePuzzles, saveDay } from './gamelogic/day';
+import {
+    lettersForDay,
+    loadDay,
+    loadPaidClues,
+    newDay,
+    parsePlayerDay,
+    parsePuzzles,
+    saveDay,
+    savePaidClues,
+} from './gamelogic/day';
 import { isValidPath, pathKey, spell } from './gamelogic/grid';
 import { parseInviteLink } from './gamelogic/invites';
 import {
     checkTrace,
+    clueCharge,
+    clueText,
     combineFound,
     dimmerLevels,
     listPoints,
@@ -41,11 +52,13 @@ import type { Puzzle } from './types/Puzzle';
 import type { ScoreRow } from './types/ScoreRow';
 import type { Theme } from './types/Theme';
 import { createBoard } from './ui/board';
+import { createClueButton } from './ui/clueButton';
 import { h, icon } from './ui/dom';
 import { getElement } from './ui/getElement';
 import { showHelp } from './ui/help';
 import { isModalOpen, closeModal, openModal } from './ui/modal';
 import { renderLights, renderProgress, showRankings } from './ui/progress';
+import { scheduleIcon, showSchedule } from './ui/schedule';
 import { showScoreboard } from './ui/scoreboard';
 import { showSettings } from './ui/settings';
 import { showCelebration, showSplash } from './ui/splash';
@@ -68,6 +81,7 @@ const ERRORS = {
 /** The board and the found-words box, made by wireUi() */
 let board: ReturnType<typeof createBoard>;
 let wordbox: ReturnType<typeof createWordbox>;
+let renderClueButton: ReturnType<typeof createClueButton>;
 
 /** What was shown last time the screen was drawn (-1 before the first), to spot rank-ups and a fully lit grid */
 let lastPoints = -1;
@@ -86,6 +100,34 @@ const puzzleCache = new Map<string, Puzzle>();
  */
 function inFamily(): boolean {
     return session.mode.kind === 'family';
+}
+
+/**
+ * Returns whose play the paid clues on this device belong to.
+ *
+ * @returns 'local', or the family's id
+ */
+function clueOwner(): string {
+    return session.mode.kind === 'family' ? session.mode.fid : 'local';
+}
+
+/**
+ * Returns the player's clue charge. It comes from their own bonus words and clues, even when combined.
+ *
+ * @returns How many clues are ready, and how many bonus words count towards the next
+ */
+function charge(): { ready: number; progress: number } {
+    return clueCharge(session.mine.found, session.puzzle, session.paidClues.length);
+}
+
+/**
+ * Returns the message for having no clue ready.
+ *
+ * @returns The message
+ */
+function noClueMessage(): string {
+    const more = BONUS_PER_CLUE - charge().progress;
+    return `Find ${more} more bonus ${more === 1 ? 'word' : 'words'} for a clue`;
 }
 
 /**
@@ -121,6 +163,7 @@ function dayChanged(): void {
     session.puzzle = puzzleFor(session.todayKey);
     session.path = [];
     session.clueMode = false;
+    session.paidClues = loadPaidClues(clueOwner(), session.todayKey);
     lastPoints = -1;
     lastLit = -1;
     board.setLetters(session.puzzle.letters);
@@ -231,6 +274,8 @@ function renderBoard(): void {
     const bulb = document.getElementById('btn-hints');
     bulb?.classList.toggle('active', session.clueMode);
     bulb?.setAttribute('aria-pressed', String(session.clueMode));
+    const { ready, progress } = charge();
+    renderClueButton(ready, progress);
     renderWord();
 }
 
@@ -358,7 +403,9 @@ function submit(path: number[]): void {
         flashMessage(`${text}${cleared ? ` ${cleared} cleared!` : ''}`, big ? 'big' : 'praise', result.points);
     } else {
         const readings = readSquares(after, session.puzzle).size - readSquares(before, session.puzzle).size;
-        flashMessage(readings ? `Bonus word! ${readings} new readings` : 'Bonus word!', 'praise');
+        const earned = charge().progress === BONUS_PER_CLUE - 1;
+        const news = earned ? ' Clue earned!' : readings ? ` ${readings} new readings` : '';
+        flashMessage(`Bonus word!${news}`, 'praise');
     }
     if (inFamily()) {
         saveMine({ [`found/${entry.p}`]: { w: entry.w, at: entry.at } });
@@ -393,23 +440,67 @@ function onKey(e: KeyboardEvent): void {
 }
 
 /**
- * Shows a clue for a square: how long one of its missing List words is, and how it starts.
+ * Shows a clue message, replacing any clue already showing.
+ *
+ * @param text - The message
+ */
+function showClueMessage(text: string): void {
+    dismissClue?.();
+    dismissClue = showToast(text);
+}
+
+/**
+ * Records a clue the player has just paid for, on this device, and that they used clues (the family can see that on
+ * the Compare screen).
+ *
+ * @param word - The word the clue is about
+ */
+function payForClue(word: string): void {
+    session.paidClues = [...session.paidClues, word];
+    savePaidClues(clueOwner(), session.todayKey, session.paidClues);
+    if (session.mine.hints) return;
+    if (inFamily()) saveMine({ hints: true });
+    else {
+        session.mine.hints = true;
+        saveDay(session.mine);
+    }
+}
+
+/**
+ * Handles a tapped square with the bulb on. A clue costs a charge the first time, and is free to see again. Any
+ * answer but "no words left" turns the bulb off, so that a stray tap can't spend another charge.
  *
  * @param square - The square tapped
  */
 function showClue(square: number): void {
-    const clue = squareClue(shownFound(), session.puzzle, square);
-    dismissClue?.();
-    dismissClue = showToast(
-        clue
-            ? `A ${clue.length}-letter word through here starts ${clue.start.toUpperCase()}.`
-            : 'No words left through this square.',
-    );
+    const word = squareClue(shownFound(), session.puzzle, square);
+    if (!word) {
+        showClueMessage('No words left through this square.');
+        return;
+    }
+    const paid = session.paidClues.includes(word);
+    if (!paid && charge().ready === 0) {
+        showClueMessage(`${noClueMessage()}.`);
+    } else {
+        if (!paid) payForClue(word);
+        showClueMessage(`A word through here: ${clueText(word)}.`);
+    }
+    session.clueMode = false;
+    renderAll();
 }
 
 /**
- * Turns the bulb on or off: while it's on, tapping a square shows a clue. The first time each day, asks first, and
- * records that clues were used (the family can see it on the Compare screen).
+ * Returns whether the bulb has anything to give: a clue ready, or a paid clue whose word is still missing.
+ *
+ * @returns True if turning it on could show a clue
+ */
+function hasClueToShow(): boolean {
+    const have = new Set(shownFound().map((f) => f.w));
+    return charge().ready > 0 || session.paidClues.some((w) => !have.has(w));
+}
+
+/**
+ * Turns the bulb on or off: while it's on, tapping a square shows a clue.
  */
 function toggleClues(): void {
     if (session.clueMode) {
@@ -417,17 +508,9 @@ function toggleClues(): void {
         renderAll();
         return;
     }
-    if (!session.mine.hints) {
-        const ok = confirm(
-            'Use clues? Tap a square to see how long one of its missing words is, and how it starts.' +
-                (inFamily() ? ' Your family will see that you used clues today.' : ''),
-        );
-        if (!ok) return;
-        if (inFamily()) saveMine({ hints: true });
-        else {
-            session.mine.hints = true;
-            saveDay(session.mine);
-        }
+    if (!hasClueToShow()) {
+        flashMessage(noClueMessage(), 'praise');
+        return;
     }
     session.clueMode = true;
     session.path = [];
@@ -577,7 +660,10 @@ function openSplash(): void {
  * Erases local play's saved days.
  */
 function eraseLocal(): void {
-    for (let i = 0; i < 400; i++) remove(`day:${addDays(dayKey(), -i)}`);
+    for (let i = 0; i < 400; i++) {
+        remove(`day:${addDays(dayKey(), -i)}`);
+        remove(`clues:local:${addDays(dayKey(), -i)}`);
+    }
     if (!inFamily()) openLocalDay(dayKey());
     showToast('Your progress on this device was erased. Family play is kept with the family.');
 }
@@ -678,14 +764,20 @@ function wireUi(): void {
         onClue: showClue,
     });
     wordbox = createWordbox(getElement('wordbox'));
-    const toolbar: [string, Parameters<typeof icon>[0], string, () => void][] = [
-        ['hints', 'hint', 'Clues', toggleClues],
-        ['yesterday', 'yesterday', "Yesterday's answers", () => void openYesterday()],
-        ['compare', 'stats', 'Compare with your family', openCompare],
-        ['help', 'help', 'How to play', showHelp],
+    const toolbar: [string, Element, string, () => void][] = [
+        ['hints', icon('hint'), 'Clues', toggleClues],
+        [
+            'schedule',
+            scheduleIcon(),
+            'Fixture schedule: the words left',
+            () => showSchedule(shownFound(), session.puzzle, session.paidClues),
+        ],
+        ['yesterday', icon('yesterday'), "Yesterday's answers", () => void openYesterday()],
+        ['compare', icon('stats'), 'Compare with your family', openCompare],
+        ['help', icon('help'), 'How to play', showHelp],
         [
             'menu',
-            'settings',
+            icon('settings'),
             'Menu',
             () =>
                 showSettings({
@@ -704,10 +796,11 @@ function wireUi(): void {
             h(
                 'button',
                 { id: `btn-${id}`, class: 'icon-btn', type: 'button', 'aria-label': label, title: label, onclick: fn },
-                icon(ic),
+                ic,
             ),
         );
     }
+    renderClueButton = createClueButton(getElement('btn-hints'));
     getElement('btn-clear').addEventListener('click', () => {
         session.path = [];
         renderBoard();

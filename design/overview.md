@@ -30,7 +30,7 @@ first game, Buzz Off. All four share families. The brief for all three was:
 
 - **Built and passing:** the whole game works: local play, family play (compare, combine), invites, sign-in, ranks,
   hints, Yesterday's Answers, help, menu, dark mode, offline, and installing it as an app. `npm run lint`, `npm test`
-  (61 tests) and `npm run build` all pass.
+  (71 tests) and `npm run build` all pass.
 - **Not yet tried for real:** it has been tested only in Jest (jsdom, including whole-game tests that trace words with
   pointer events, and family play against a fake Firebase). It has not been run on a real phone, in a real browser, or
   against the real Firebase database.
@@ -66,6 +66,7 @@ first game, Buzz Off. All four share families. The brief for all three was:
     - What counts as a hard square (at most 1 List word through it), and the most a grid may have (6).
 - **The word list:** SCOWL size 50, minus `tools/blocklist.txt`.
 - **Spotlights:** `SPOTLIGHT_MIN_LENGTH` and `SPOTLIGHT_MAX` in `data/app.ts`. **Dimmer levels:** `DIMMER_FULL`.
+  **Clues:** `BONUS_PER_CLUE`. **Fixture Schedule columns:** `SCHEDULE_LENGTHS`.
 - **Ranks:** `data/ranks.ts`. **Points:** `wordPoints()` in `gamelogic/play.ts`.
 - **Rebuilding:** `npm run build:puzzles` rebuilds `words.txt`, `everyday-words.txt` and `puzzles.txt`. It downloads SCOWL into
   `tools/.cache/` the first time, or uses a copy given with `--scowl <file>`. The output is the same every time for the

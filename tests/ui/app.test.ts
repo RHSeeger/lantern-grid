@@ -80,17 +80,12 @@ describe('Lantern Grid', () => {
         expect(squares[20].querySelector('.sq-hint')?.textContent).toBe('');
     });
 
-    it('shows a clue when a square is tapped with the bulb on, and records it', () => {
-        window.confirm = jest.fn(() => true);
+    // Changed: clues used to be free once turned on; they now have to be earned (tests/ui/clues.test.ts has the rest)
+    it('keeps the bulb off until a clue is earned, so tapping still traces', () => {
         const bulb = document.getElementById('btn-hints') as HTMLElement;
         bulb.click();
-        expect(bulb.classList.contains('active')).toBe(true);
-        tap(14);
-        expect(document.getElementById('toasts')?.textContent).toContain('A 4-letter word through here starts RA.');
-        expect(document.getElementById('word-text')?.textContent).toBe('');
-        const saved = Object.keys(localStorage).find((k) => k.startsWith('lantern:day:'));
-        expect(saved && localStorage.getItem(saved)).toContain('"hints":true');
-        bulb.click();
+        expect(bulb.classList.contains('active')).toBe(false);
+        expect(document.getElementById('message')?.textContent).toBe('Find 1 more bonus word for a clue');
         tap(2);
         expect(document.getElementById('word-text')?.textContent).toBe('R');
         tap(2); // tapping it again clears it, since one letter can't be a word

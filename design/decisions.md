@@ -94,4 +94,18 @@ proposal to give bonus words rank credit: finding one gives a clue to the real w
 keeps Full Output meaning every word. Bonus words reveal quickly (typically 19 squares after 5 of them, 31 after 17).
 **Affects:** game-design.md, how-the-game-works.md, ui/help.ts, ui/board.ts, ui/progress.ts, gamelogic/play.ts, app.ts,
 data/ranks.ts
+**Status:** Active, except its free clues: see 2026-11-01 — Charged clues and a Fixture Schedule
+
+## 2026-11-01 — Charged clues and a Fixture Schedule
+**Decision:** Clues are earned: one per 2 of the player's own bonus words, shown by the bulb filling and a count on it. A
+clue is paid for once per word, so seeing it again from any square is free. The bulb turns off after each clue, and the
+"are you sure?" prompt is gone. A new free screen with its own button, the Fixture Schedule, counts the missing List words
+by first letter and length, and lists the player's unsolved clues. Spent clues are saved only on the device for now, so
+`database.rules.json` is unchanged; Compare still shows only whether a player used clues.
+**Why:** With free clues the user reached Full Output, slowly; without them they didn't get far, and would mostly play
+with clues on. The middle was missing. The schedule is Spelling Bee's hint grid, which says what to look for without
+giving it away, and charges make Full Output take work. The user wants to feel out charges before changing the rules
+every game shares, and doesn't want the schedule showing each time they open the found words, so it isn't in that box.
+**Affects:** game-design.md, code-design.md, how-the-game-works.md, todo.md, ui/help.ts, ui/schedule.ts, ui/clueButton.ts,
+gamelogic/play.ts, gamelogic/day.ts, session.ts, app.ts, data/app.ts
 **Status:** Active
